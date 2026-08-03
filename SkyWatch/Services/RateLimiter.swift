@@ -13,10 +13,15 @@ actor RateLimiter {
 
     private let minimumInterval: Duration
     private let clock = ContinuousClock()
+    private let sleep: @Sendable (Duration) async throws -> Void
     private var nextAvailableSlot: ContinuousClock.Instant?
 
-    init(minimumInterval: Duration = RateLimiter.defaultInterval) {
+    init(
+        minimumInterval: Duration = RateLimiter.defaultInterval,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         self.minimumInterval = minimumInterval
+        self.sleep = sleep
     }
 
     /// Suspends until this caller's slot comes up. Throws `CancellationError` if the task is
@@ -27,7 +32,7 @@ actor RateLimiter {
         nextAvailableSlot = slot.advanced(by: minimumInterval)
 
         if slot > now {
-            try await Task.sleep(for: slot - now)
+            try await sleep(slot - now)
         } else {
             // Still a cancellation point, so a cancelled scan doesn't sneak one last request out.
             try Task.checkCancellation()
