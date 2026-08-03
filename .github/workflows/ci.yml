@@ -57,5 +57,4 @@ jobs:
             -project SkyWatch.xcodeproj \
             -scheme SkyWatch \
             -destination "platform=watchOS Simulator,id=$UDID" \
-            CODE_SIGNING_ALLOWED=NO \
-            -quiet
+            CODE_SIGNING_ALLOWED=NO
