@@ -44,10 +44,14 @@ jobs:
 
       - name: Test
         run: |
+          # Show the raw list if discovery ever fails again — nothing worse than a silent empty.
+          echo "Available devices:"
+          xcrun simctl list devices available | grep -E "Apple Watch" || true
           DEVICE=$(xcrun simctl list devices available \
-            | sed -nE 's/^[[:space:]]*(.*) \([0-9A-F-]{36}\) \(.*\)$/\1/p' \
-            | head -1)
-          echo "Testing on: $DEVICE"
+            | grep "Apple Watch" \
+            | head -1 \
+            | sed -E 's/^[[:space:]]+//; s/ \([0-9A-Fa-f-]{36}\)([[:space:]]*\(.*\))?$//')
+          echo "Testing on: [$DEVICE]"
           xcodebuild test \
             -project SkyWatch.xcodeproj \
             -scheme SkyWatch \
