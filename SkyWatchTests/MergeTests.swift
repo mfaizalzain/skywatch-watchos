@@ -171,4 +171,35 @@ struct MergeTests {
 
         #expect(try #require(targets.first).hasAlerted)
     }
+
+    @Test("A sky larger than the cap keeps only the nearest targets")
+    func skyIsCappedToNearest() throws {
+        let many = try (1...80).map { try aircraft(hex: String(format: "a%04x", $0), northNM: Double($0)) }
+        let targets = merger.merge(existing: [], response: many, observer: observer)
+
+        #expect(targets.count == merger.maxTrackedTargets)
+        #expect(targets.map(\.distanceNM).sorted() == targets.map(\.distanceNM))
+        #expect(targets.last!.distanceNM < 61)
+    }
+
+    @Test("A detail lookup cannot grow the tracked set past the cap")
+    func detailMergeRespectsCap() throws {
+        let many = try (1...70).map { try aircraft(hex: String(format: "a%04x", $0), northNM: Double($0)) }
+        var targets = merger.merge(existing: [], response: many, observer: observer)
+
+        // A new aircraft arrives via the detail path, which does not penalise anyone missing.
+        let newcomer = try aircraft(hex: "b0001", northNM: 40)
+        targets = merger.merge(existing: targets, response: [newcomer], observer: observer, penalizeMissing: false)
+
+        #expect(targets.count == merger.maxTrackedTargets)
+        #expect(targets.contains { $0.id == "b0001" })
+    }
+
+    @Test("A sky within the cap is left untouched")
+    func skyUnderCapIsUnchanged() throws {
+        let few = try (1...20).map { try aircraft(hex: String(format: "a%04x", $0), northNM: Double($0)) }
+        let targets = merger.merge(existing: [], response: few, observer: observer)
+
+        #expect(targets.count == 20)
+    }
 }

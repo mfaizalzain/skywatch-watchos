@@ -72,9 +72,15 @@ struct TrackedTarget: Sendable, Hashable, Identifiable {
 struct TargetMerger: Sendable {
     static let trailLength = 3
     static let dropAfterMissedCycles = 2
+    /// The most targets tracked at once. The feed can legitimately return several hundred
+    /// aircraft over a busy airport; past roughly this many, the list is unreadable and the
+    /// per-frame `Canvas` draw and SwiftUI diffing cost more than the extra blips earn. The
+    /// cap keeps the nearest, which is exactly the set that matters.
+    static let maxTrackedTargets = 60
 
     var trailLength: Int = TargetMerger.trailLength
     var dropAfterMissedCycles: Int = TargetMerger.dropAfterMissedCycles
+    var maxTrackedTargets: Int = TargetMerger.maxTrackedTargets
 
     /// - Parameter penalizeMissing: whether targets absent from `response` count as missed. False
     ///   for a single-aircraft detail lookup, which says nothing about the rest of the sky.
@@ -139,7 +145,7 @@ struct TargetMerger: Sendable {
         }
 
         guard penalizeMissing else {
-            return byID.values.sorted { $0.distanceNM < $1.distanceNM }
+            return capped(byID.values.sorted { $0.distanceNM < $1.distanceNM })
         }
 
         for (id, var target) in byID where !seenIDs.contains(id) {
@@ -151,6 +157,12 @@ struct TargetMerger: Sendable {
             }
         }
 
-        return byID.values.sorted { $0.distanceNM < $1.distanceNM }
+        return capped(byID.values.sorted { $0.distanceNM < $1.distanceNM })
+    }
+
+    /// Keeps only the nearest `maxTrackedTargets`. Applied to both merge paths — a detail lookup
+    /// must not be able to grow the tracked set past what a scan can.
+    private func capped(_ targets: [TrackedTarget]) -> [TrackedTarget] {
+        targets.count <= maxTrackedTargets ? targets : Array(targets.prefix(maxTrackedTargets))
     }
 }
