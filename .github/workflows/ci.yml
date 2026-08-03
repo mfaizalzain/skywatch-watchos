@@ -44,17 +44,16 @@ jobs:
 
       - name: Test
         run: |
-          # Show the raw list if discovery ever fails again — nothing worse than a silent empty.
-          echo "Available devices:"
-          xcrun simctl list devices available | grep -E "Apple Watch" || true
-          DEVICE=$(xcrun simctl list devices available \
+          # The device name contains parens of its own ("Series 10 (46mm)"), so target the
+          # simulator by UDID instead of parsing a name.
+          UDID=$(xcrun simctl list devices available \
             | grep "Apple Watch" \
             | head -1 \
-            | sed -E 's/^[[:space:]]+//; s/ \([0-9A-Fa-f-]{36}\)([[:space:]]*\(.*\))?$//')
-          echo "Testing on: [$DEVICE]"
+            | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}')
+          echo "Testing on UDID: $UDID"
           xcodebuild test \
             -project SkyWatch.xcodeproj \
             -scheme SkyWatch \
-            -destination "platform=watchOS Simulator,name=$DEVICE" \
+            -destination "platform=watchOS Simulator,id=$UDID" \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
