@@ -164,7 +164,8 @@ final class ScanStore {
         }
 
         let task = Task { [weak self] in
-            await self?.performRefresh()
+            guard let self else { return }
+            await self.performRefresh()
         }
         refreshTask = task
         await task.value
@@ -178,7 +179,8 @@ final class ScanStore {
         debounceTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
-            await self?.refresh(force: true)
+            guard let self else { return }
+            await self.refresh(force: true)
         }
     }
 

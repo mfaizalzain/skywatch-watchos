@@ -23,6 +23,16 @@ jobs:
           python3 tools_genproj.py
           git diff --exit-code -- SkyWatch.xcodeproj/project.pbxproj
 
+      # The project targets watchOS 26; GitHub images ship several Xcodes and the default
+      # (Xcode 16.x) has no watchOS 26 SDK. Select the newest installed.
+      - name: Select Xcode
+        run: |
+          ls -d /Applications/Xcode*.app 2>/dev/null
+          XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Selected: $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
       - name: Build (watchOS Simulator, unsigned)
         run: |
           xcodebuild build \
