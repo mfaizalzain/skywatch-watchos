@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A public repo, so these minutes are free; keep it tight anyway.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # The project file is generated, so drift is a real failure mode: someone adds a file in
+      # Xcode, forgets it in git, and the regenerated project silently drops it.
+      - name: Verify project file is in sync with tools_genproj.py
+        run: |
+          python3 tools_genproj.py
+          git diff --exit-code -- SkyWatch.xcodeproj/project.pbxproj
+
+      - name: Build (watchOS Simulator, unsigned)
+        run: |
+          xcodebuild build \
+            -project SkyWatch.xcodeproj \
+            -scheme SkyWatch \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
+
+      - name: Test
+        run: |
+          DEVICE=$(xcrun simctl list devices available \
+            | sed -nE 's/^[[:space:]]*(.*) \([0-9A-F-]{36}\) \(.*\)$/\1/p' \
+            | head -1)
+          echo "Testing on: $DEVICE"
+          xcodebuild test \
+            -project SkyWatch.xcodeproj \
+            -scheme SkyWatch \
+            -destination "platform=watchOS Simulator,name=$DEVICE" \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
