@@ -45,11 +45,13 @@ jobs:
       - name: Test
         run: |
           # xcodebuild's valid watch destinations carry different UDIDs than simctl lists
-          # (paired-simulator IDs). Ask xcodebuild itself, as JSON, for the destinations it
-          # will accept.
-          UDID=$(xcodebuild -project SkyWatch.xcodeproj -scheme SkyWatch -showdestinations -json 2>/dev/null \
-            | jq -r '.destinations[] | select(.platform == "watchOS Simulator") | .id' \
-            | head -1)
+          # (paired-simulator IDs), and -showdestinations writes them to stderr. Merge the
+          # streams and pick the first watchOS Simulator UUID.
+          UDID=$(xcodebuild -project SkyWatch.xcodeproj -scheme SkyWatch -showdestinations 2>&1 \
+            | grep -A4 'platform:watchOS Simulator' \
+            | grep -oE 'id:[0-9A-Fa-f-]{36}' \
+            | head -1 \
+            | cut -d: -f2)
           echo "Testing on UDID: $UDID"
           xcodebuild test \
             -project SkyWatch.xcodeproj \
