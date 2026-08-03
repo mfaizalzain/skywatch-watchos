@@ -157,7 +157,8 @@ struct MergeTests {
             observer: observer
         )
 
-        let approach = try #require(try #require(targets.first).closestApproach)
+        let first = try #require(targets.first)
+        let approach = try #require(first.closestApproach)
         #expect(abs(approach.timeToClosestApproach - 100) < 2)
         #expect(approach.minimumDistanceNM < 0.2)
     }
