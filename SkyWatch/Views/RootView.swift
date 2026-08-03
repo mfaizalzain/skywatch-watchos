@@ -1,0 +1,60 @@
+import SwiftUI
+
+/// Destinations that aren't an aircraft. Aircraft push by hex, which is a `String`.
+enum Route: Hashable {
+    case settings
+}
+
+enum ScanTab: Hashable {
+    case radar
+    case list
+}
+
+struct RootView: View {
+    @Environment(ScanStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+
+    @State private var tab: ScanTab = .radar
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            TabView(selection: $tab) {
+                RadarView()
+                    .tag(ScanTab.radar)
+
+                AircraftListView()
+                    .tag(ScanTab.list)
+            }
+            .tabViewStyle(.verticalPage)
+            .containerBackground(Palette.scopeBase, for: .navigation)
+            .navigationDestination(for: String.self) { hex in
+                AircraftDetailView(hex: hex)
+            }
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .settings: SettingsView()
+                }
+            }
+        }
+        // Polling is tied to the scene, not to a view's lifetime: nothing runs in the background.
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            store.setActive(phase == .active)
+        }
+        .onChange(of: isLuminanceReduced, initial: true) { _, reduced in
+            store.isLuminanceReduced = reduced
+        }
+    }
+}
+
+#Preview("Root") {
+    RootView()
+        .environment(ScanStore.previewStore(targets: PreviewData.handful))
+}
+
+#Preview("Always-On") {
+    RootView()
+        .environment(ScanStore.previewStore(targets: PreviewData.handful, isLuminanceReduced: true))
+        .environment(\.isLuminanceReduced, true)
+}
