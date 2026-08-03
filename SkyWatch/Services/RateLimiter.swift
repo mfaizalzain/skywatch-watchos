@@ -27,7 +27,7 @@ actor RateLimiter {
         nextAvailableSlot = slot.advanced(by: minimumInterval)
 
         if slot > now {
-            try await clock.sleep(until: slot, tolerance: .zero)
+            try await Task.sleep(for: slot - now)
         } else {
             // Still a cancellation point, so a cancelled scan doesn't sneak one last request out.
             try Task.checkCancellation()
