@@ -56,12 +56,15 @@ struct RootView: View {
                 case .settings: SettingsView()
                 }
             }
-            .environment(\.requestTrackTab) {
-                // Pop any pushed screen (e.g. an aircraft detail) so the Track
-                // tab is actually visible, then switch to it.
-                path = NavigationPath()
-                tab = .track
-            }
+        }
+        // Set on the NavigationStack, not inside it: pushed destinations
+        // (aircraft detail) inherit the stack's environment, so the detail
+        // screen's "Track this flight" button can actually switch tabs.
+        .environment(\.requestTrackTab) {
+            // Pop any pushed screen (e.g. an aircraft detail) so the Track
+            // tab is actually visible, then switch to it.
+            path = NavigationPath()
+            tab = .track
         }
         // Polling is tied to the scene, not to a view's lifetime: nothing runs in the background.
         .onChange(of: scenePhase, initial: true) { _, phase in

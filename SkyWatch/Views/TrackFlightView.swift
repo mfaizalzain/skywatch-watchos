@@ -18,6 +18,12 @@ struct TrackFlightView: View {
                 trackingCard
             }
         }
+        // Attached at the Group level, not to setupForm: the tracking card's
+        // "Choose Airport" fallback (when FlightAware can't resolve the
+        // destination) needs the same picker.
+        .sheet(isPresented: $pickerPresented) {
+            airportPicker
+        }
         .navigationTitle("Track Flight")
     }
 
@@ -68,9 +74,6 @@ struct TrackFlightView: View {
             .padding(.top, 4)
         }
         .padding(.horizontal, 12)
-        .sheet(isPresented: $pickerPresented) {
-            airportPicker
-        }
     }
 
     private var airportPicker: some View {

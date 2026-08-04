@@ -93,6 +93,7 @@ final class FlightTrackStore {
     /// auto-detect the destination from its own data; until it is known the
     /// live ETA is unavailable (it needs the destination's coordinates).
     func startTracking(number: FlightNumber, airport: Airport? = nil) {
+        let previousCallsign = self.flightNumber?.callsign
         self.flightNumber = number
         self.airport = airport
         self.phase = .searching
@@ -107,11 +108,18 @@ final class FlightTrackStore {
         self.aeroError = nil
         self.lastAeroPoll = nil
         self.hasAutoStopped = false
+        // Drop any alerts armed for a previous flight so they can't fire later.
+        if let previousCallsign {
+            Task { await notifier.cancelAll(for: previousCallsign) }
+        }
         Task { await notifier.requestAuthorizationIfNeeded() }
         if isActive { startPolling() }
     }
 
     func stopTracking() {
+        if let flightNumber {
+            Task { await notifier.cancelAll(for: flightNumber.callsign) }
+        }
         stopPolling()
         flightNumber = nil
         airport = nil
@@ -223,6 +231,7 @@ final class FlightTrackStore {
                 FlightTracker.etaMinutes(distanceNM: distance, groundSpeedKnots: $0)
             }
             phase = .inAir(etaMinutes: eta)
+            rearmScheduledAlerts(etaMinutes: eta)
             fireAlertsIfNeeded(isLanded: false)
 
         } catch is CancellationError {
@@ -269,6 +278,13 @@ final class FlightTrackStore {
                 airport = found
             }
 
+            // Re-arm the landed alert from the official gate arrival, and the
+            // 30/15 from whatever the live layer knows — so all three fire
+            // even if the app is suspended at pickup time.
+            var eta: Double?
+            if case let .inAir(etaMinutes) = phase { eta = etaMinutes }
+            rearmScheduledAlerts(etaMinutes: eta)
+
             // Official landed beats the feed-based inference: FlightAware
             // knows the flight has arrived even if the transponder is already
             // off and the aircraft has left the ADS-B feed.
@@ -295,6 +311,38 @@ final class FlightTrackStore {
         }
     }
 
+    /// Arms the not-yet-fired 30/15-minute alerts as future-dated local
+    /// notifications (they fire from the notification system even when the
+    /// app is suspended — the pickup-wait case), and re-arms the landed alert
+    /// from the official FlightAware arrival when known.
+    ///
+    /// Called on every poll that knows an ETA: each call replaces the previous
+    /// schedule with one built from the freshest numbers, so the alerts track
+    /// the flight rather than drifting with an old ETA. Only milestones that
+    /// are genuinely ahead are armed — once the ETA crosses a threshold the
+    /// instant-fire path (`fireAlertsIfNeeded`) owns it, so the two paths
+    /// never race on the same alert. Milestones already fired are never
+    /// re-armed.
+    private func rearmScheduledAlerts(etaMinutes: Double?) {
+        guard let flightNumber else { return }
+        let now = Date()
+        // Arm only when the milestone is at least a minute ahead, so the
+        // scheduled alert and the live-crossing fire can't both deliver.
+        let horizon = 1.0
+
+        if !alertState.hasFired30, let etaMinutes, etaMinutes.isFinite, etaMinutes > 30 + horizon {
+            let at = now.addingTimeInterval((etaMinutes - 30) * 60)
+            Task { await notifier.schedule(.thirtyMinutes, flight: flightNumber.callsign, at: at) }
+        }
+        if !alertState.hasFired15, let etaMinutes, etaMinutes.isFinite, etaMinutes > 15 + horizon {
+            let at = now.addingTimeInterval((etaMinutes - 15) * 60)
+            Task { await notifier.schedule(.fifteenMinutes, flight: flightNumber.callsign, at: at) }
+        }
+        if !alertState.hasFiredLanded, let officialArrival, officialArrival > now.addingTimeInterval(60) {
+            Task { await notifier.schedule(.landed, flight: flightNumber.callsign, at: officialArrival) }
+        }
+    }
+
     private func fireAlertsIfNeeded(isLanded: Bool) {
         let eta: Double?
         if case let .inAir(etaMinutes) = phase { eta = etaMinutes } else { eta = nil }
@@ -309,6 +357,9 @@ final class FlightTrackStore {
         case .thirtyMinutes, .fifteenMinutes:
             Haptics.flightMilestone()
         }
+        // A live fire supersedes the armed future-dated one (they share an
+        // identifier, so this also prevents a duplicate when both paths run).
+        Task { await notifier.cancel(alert, flight: flightNumber.callsign) }
         Task { await notifier.fire(alert, flight: flightNumber.callsign) }
 
         // Landed is the end of the pickup job: stop polling so nothing keeps
@@ -344,6 +395,15 @@ struct FlightNotifier: Sendable {
     var fireAlert: @Sendable (FlightAlert, String) async -> Void = { alert, flight in
         await FlightNotifier.defaultFire(alert, flight: flight)
     }
+    var scheduleAlert: @Sendable (FlightAlert, String, Date) async -> Void = { alert, flight, at in
+        await FlightNotifier.defaultSchedule(alert, flight: flight, at: at)
+    }
+    var cancelScheduled: @Sendable (FlightAlert, String) async -> Void = { alert, flight in
+        await FlightNotifier.defaultCancel(alert, flight: flight)
+    }
+    var cancelAll: @Sendable (String) async -> Void = { flight in
+        await FlightNotifier.defaultCancelAll(flight: flight)
+    }
 
     func requestAuthorizationIfNeeded() async {
         _ = await requestAuthorization()
@@ -351,6 +411,25 @@ struct FlightNotifier: Sendable {
 
     func fire(_ alert: FlightAlert, flight: String) async {
         await fireAlert(alert, flight)
+    }
+
+    /// Arms a future-dated alert: the notification system delivers it even if
+    /// the app is backgrounded or suspended, so a pickup alert still fires
+    /// while the watch sits on the charger.
+    func schedule(_ alert: FlightAlert, flight: String, at date: Date) async {
+        await scheduleAlert(alert, flight, date)
+    }
+
+    /// Removes a previously armed alert (re-armed with a new ETA, or fired
+    /// live before its scheduled time).
+    func cancel(_ alert: FlightAlert, flight: String) async {
+        await cancelScheduled(alert, flight)
+    }
+
+    /// Removes every armed alert for a flight — used when tracking stops or
+    /// restarts so stale notifications don't fire later.
+    func cancelAll(for flight: String) async {
+        await cancelAll(flight)
     }
 
     private static func defaultRequest() async -> Bool {
@@ -366,17 +445,55 @@ struct FlightNotifier: Sendable {
         }
     }
 
+    private static func identifier(_ alert: FlightAlert, flight: String) -> String {
+        "flight-alert-\(flight)-\(alert.rawValue)"
+    }
+
     private static func defaultFire(_ alert: FlightAlert, flight: String) async {
         let content = UNMutableNotificationContent()
         content.title = "\(flight) — \(alert.rawValue)"
         content.body = alert.body
         content.sound = .default
+        // Same identifier as the scheduled variant: a live fire replaces any
+        // still-pending scheduled one for this milestone.
         let request = UNNotificationRequest(
-            identifier: "flight-alert-\(flight)-\(alert.rawValue)",
+            identifier: identifier(alert, flight: flight),
             content: content,
             trigger: nil // deliver immediately
         )
         try? await UNUserNotificationCenter.current().add(request)
+    }
+
+    private static func defaultSchedule(_ alert: FlightAlert, flight: String, at date: Date) async {
+        let content = UNMutableNotificationContent()
+        content.title = "\(flight) — \(alert.rawValue)"
+        content.body = alert.body
+        content.sound = .default
+        // watchOS refuses triggers under 60 s; clamp so a caller racing the
+        // clock can't produce an invalid request.
+        let interval = max(date.timeIntervalSinceNow, 60)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: identifier(alert, flight: flight),
+            content: content,
+            trigger: trigger
+        )
+        try? await UNUserNotificationCenter.current().add(request)
+    }
+
+    private static func defaultCancel(_ alert: FlightAlert, flight: String) async {
+        await UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [identifier(alert, flight: flight)]
+        )
+    }
+
+    private static func defaultCancelAll(flight: String) async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+        let identifiers = pending
+            .map(\.identifier)
+            .filter { $0.hasPrefix("flight-alert-\(flight)-") }
+        await center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 }
 
