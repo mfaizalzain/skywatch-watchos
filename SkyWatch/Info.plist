@@ -29,8 +29,6 @@
 	</array>
 	<key>WKApplication</key>
 	<true/>
-	<key>WKRunsIndependentlyOfCompanionApp</key>
-	<true/>
 	<key>WKWatchOnly</key>
 	<true/>
 </dict>
