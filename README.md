@@ -30,7 +30,7 @@ Built for personal sideloading. It is not intended for the App Store.
   and estimated arrival — and the landed alert is triggered by the airline's own status rather
   than inferred from the ADS-B feed. Tracking stops automatically once the flight has landed
   (the final state stays on screen until you dismiss it), so nothing keeps polling afterwards.
-- **Settings** — radius, refresh interval, units, heading-up vs north-up, filters, proximity haptic.
+- **Settings** — radius, refresh interval (10 / 20 / 60 s), units, heading-up vs north-up, filters, proximity haptic.
 - **Complication** — a Smart Stack widget with the count in range and the nearest aircraft.
 
 ## Requirements
@@ -136,14 +136,15 @@ tracker's, goes through one actor that reserves its slot before suspending, so c
 queue instead of firing together. The minimum spacing is 1.2 s against a documented limit of 1
 request per second.
 
-**Battery.** Polling only runs while the scene is active, backs off to 60 s when the display is
-luminance-reduced, and the compass runs only while the radar is on screen. Location accuracy is set
-to 100 m with a 250 m distance filter — far more than a 20 nm radius needs. Flight tracking polls
-the callsign endpoint on the same scene-gated cadence but slower — tracking is a wait, not a
-live radar: 60 s on wrist-up, 2 min on wrist-down; the AeroAPI status layer is metered and polls
-at a fifth of that (every 5 minutes, ≈ 12 queries/hour ≈ $0.06 inside the feeder's $10/month
-Personal allowance). The alerts are local notifications fired by the watch itself — no server, no
-background execution.
+**Battery.** Polling only runs while the scene is active, backs off to 2 minutes when the display
+is luminance-reduced, and the compass runs only while the radar is on screen. Location accuracy is
+set to 100 m with a 250 m distance filter — far more than a 20 nm radius needs. The radar refresh
+is user-selectable (10 / 20 / 60 s — the sweet spot: fast enough that nothing visibly moves
+between sweeps, slow enough to stay cheap). Flight tracking polls the callsign endpoint on the
+same scene-gated cadence but slower — tracking is a wait, not a live radar: 2 minutes on wrist-up,
+5 minutes on wrist-down; the AeroAPI status layer is metered and polls at 10 minutes (≈ 6
+queries/hour ≈ $0.03 inside the feeder's $10/month Personal allowance). The alerts are local
+notifications fired by the watch itself — no server, no background execution.
 
 **Landing detection is layered.** The ADS-B feed has no "landed" field, so the app infers it: the
 transponder reports `ground` near the arrival airport, or a tracked flight powers down and leaves
@@ -184,7 +185,7 @@ To enable it:
    free **Personal** tier charges per query (≈ $0.005 for `flights/{ident}`) against a $5/month
    allowance, **doubled to $10/month for ADS-B feeders** (PiAware/FlightFeeder accounts get
    Enterprise status plus the doubled allowance automatically). A 2-hour pickup session polls
-   once per 5 minutes: about 24 queries, $0.12.
+   once per 10 minutes: about 12 queries, $0.06.
 2. The app reads the key from the `AEROAPI_KEY` build setting into its `AeroAPIKey` Info.plist
    entry. For a personal build, pass it to `xcodebuild`:
    `xcodebuild … AEROAPI_KEY="your-key"`. The release workflow does this from the

@@ -144,9 +144,10 @@ final class ScanStore {
         isLoading = false
     }
 
-    /// Wrist down means nobody is looking. One request a minute is enough to keep the scope warm.
+    /// Wrist down means nobody is looking. Two minutes keeps the scope warm
+    /// without burning battery on a display no one is watching.
     private var currentInterval: TimeInterval {
-        isLuminanceReduced ? 60 : settings.refreshInterval.seconds
+        isLuminanceReduced ? 120 : settings.refreshInterval.seconds
     }
 
     // MARK: - Refresh

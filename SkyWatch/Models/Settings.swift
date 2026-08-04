@@ -24,13 +24,26 @@ enum ScanRadius: Double, CaseIterable, Sendable, Identifiable, Codable {
 }
 
 enum RefreshInterval: Int, CaseIterable, Sendable, Identifiable, Codable {
-    case fast = 5
-    case normal = 10
-    case relaxed = 30
+    case fast = 10
+    case normal = 20
+    case relaxed = 60
 
     var id: Int { rawValue }
     var seconds: TimeInterval { TimeInterval(rawValue) }
     var title: String { "\(rawValue)s" }
+
+    /// Migrates a stored raw value from the pre-sweet-spot cadence (5/10/30 s)
+    /// to the new one, preserving the user's *intent* rather than the literal
+    /// number: fast stays fast, normal stays normal, relaxed stays relaxed.
+    /// New values pass through untouched.
+    static func migrated(from stored: Int?) -> RefreshInterval {
+        switch stored {
+        case 5: .fast
+        case 10: .normal
+        case 30: .relaxed
+        default: stored.flatMap(RefreshInterval.init(rawValue:)) ?? .normal
+        }
+    }
 }
 
 /// User settings, persisted to the shared App Group defaults so the widget reads the same values.
@@ -89,7 +102,7 @@ final class SettingsStore {
         self.defaults = store
 
         radius = (store.object(forKey: Key.radius) as? Double).flatMap(ScanRadius.init(rawValue:)) ?? .twenty
-        refreshInterval = (store.object(forKey: Key.refreshInterval) as? Int).flatMap(RefreshInterval.init(rawValue:)) ?? .normal
+        refreshInterval = RefreshInterval.migrated(from: store.object(forKey: Key.refreshInterval) as? Int)
         unitSystem = (store.string(forKey: Key.unitSystem)).flatMap(UnitSystem.init(rawValue:)) ?? .aviation
         isHeadingUp = store.object(forKey: Key.headingUp) as? Bool ?? true
         hidesGroundTraffic = store.object(forKey: Key.hideGroundTraffic) as? Bool ?? true

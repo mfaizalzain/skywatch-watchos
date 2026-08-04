@@ -131,8 +131,8 @@ final class FlightTrackStore {
                 await self.refresh()
                 // Tracking is a wait, not a live radar: a flight's ETA doesn't
                 // meaningfully change faster than this, and every skipped poll
-                // saves battery. 60 s on wrist-up, 2 min on wrist-down.
-                try? await Task.sleep(for: .seconds(self.isLuminanceReduced ? 120 : 60))
+                // saves battery. 2 min on wrist-up, 5 min on wrist-down.
+                try? await Task.sleep(for: .seconds(self.isLuminanceReduced ? 300 : 120))
             }
         }
     }
@@ -152,9 +152,10 @@ final class FlightTrackStore {
         isLoading = true
         defer { isLoading = false }
 
-        // AeroAPI is metered: refresh at most once per five minutes, and only
-        // when a key is present in the build.
-        if aeroClient != nil, lastAeroPoll == nil || Date().timeIntervalSince(lastAeroPoll!) >= 300 {
+        // AeroAPI is metered: refresh at most once per ten minutes, and only
+        // when a key is present in the build. Status and gate move slowly;
+        // a 10-minute cadence halves the cost of the 5-minute one.
+        if aeroClient != nil, lastAeroPoll == nil || Date().timeIntervalSince(lastAeroPoll!) >= 600 {
             await refreshAero(flightNumber: flightNumber)
         }
 
