@@ -327,7 +327,10 @@ final class ScanStore {
     }
 }
 
-#if DEBUG
+// Deliberately NOT DEBUG-gated: `#Preview` bodies are compiled in Release too,
+// and five view files reference previewStore from their previews. Keeping this
+// available in all configs keeps Release builds compiling; the fixture code is
+// inert outside Xcode previews.
 extension ScanStore {
     /// Seeds a store with fixtures so previews exercise the real views rather than stand-ins.
     /// Defined here because `targets` and friends are `private(set)` to this file.
@@ -348,4 +351,3 @@ extension ScanStore {
         return store
     }
 }
-#endif
