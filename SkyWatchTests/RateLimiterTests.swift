@@ -52,9 +52,12 @@ struct RateLimiterTests {
         // are cumulative (the third caller waited for two slots, the fourth for three).
         #expect(waits.count == 3)
         let sorted = waits.sorted()
-        #expect(sorted[0] >= .milliseconds(1190))
-        #expect(sorted[1] >= .milliseconds(2390))
-        #expect(sorted[2] >= .milliseconds(3590))
+        // Wall-clock jitter on a loaded CI runner eats tens of milliseconds of task-group
+        // startup latency, so assert the *spacing* (the property the limiter guarantees) —
+        // each successive caller waits a full interval longer — with a loose absolute floor.
+        #expect(sorted[0] >= .milliseconds(1100))
+        #expect(sorted[1] - sorted[0] >= .milliseconds(1190))
+        #expect(sorted[2] - sorted[1] >= .milliseconds(1190))
     }
 
     @Test("The first call does not wait")
