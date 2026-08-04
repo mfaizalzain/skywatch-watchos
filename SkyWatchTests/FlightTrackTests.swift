@@ -1,144 +1,163 @@
-import XCTest
-@testable import SkyWatchTests
+import Foundation
+import Testing
 
-final class FlightTrackTests: XCTestCase {
+@Suite("Flight tracking")
+struct FlightTrackTests {
     // MARK: - Flight number parsing
 
-    func testParsesIATAAndConvertsToICAOCallsign() {
-        let flight = FlightNumber.parse("MH123")
-        XCTAssertEqual(flight?.callsign, "MAS123")
+    @Test("IATA flight number converts to ICAO callsign")
+    func parsesIATAAndConvertsToICAO() {
+        #expect(FlightNumber.parse("MH123")?.callsign == "MAS123")
     }
 
-    func testParsesAlreadyICAO() {
-        let flight = FlightNumber.parse("MAS123")
-        XCTAssertEqual(flight?.callsign, "MAS123")
+    @Test("Already-ICAO input passes through")
+    func parsesAlreadyICAO() {
+        #expect(FlightNumber.parse("MAS123")?.callsign == "MAS123")
     }
 
-    func testParsesUnmappedAirlineFallsBackToRawPrefix() {
+    @Test("Unmapped airline falls back to the typed prefix")
+    func parsesUnmappedAirline() {
         // "XX" is not in the mapping — the callsign keeps the typed prefix.
-        let flight = FlightNumber.parse("XX42")
-        XCTAssertEqual(flight?.callsign, "XX42")
+        #expect(FlightNumber.parse("XX42")?.callsign == "XX42")
     }
 
-    func testParsesMessyInput() {
-        XCTAssertEqual(FlightNumber.parse("mh 123")?.callsign, "MAS123")
-        XCTAssertEqual(FlightNumber.parse("MH-123")?.callsign, "MAS123")
-        XCTAssertEqual(FlightNumber.parse("sq321")?.callsign, "SIA321")
+    @Test("Messy input is normalised")
+    func parsesMessyInput() {
+        #expect(FlightNumber.parse("mh 123")?.callsign == "MAS123")
+        #expect(FlightNumber.parse("MH-123")?.callsign == "MAS123")
+        #expect(FlightNumber.parse("sq321")?.callsign == "SIA321")
     }
 
-    func testRejectsGarbage() {
-        XCTAssertNil(FlightNumber.parse("123"))
-        XCTAssertNil(FlightNumber.parse("MH"))
-        XCTAssertNil(FlightNumber.parse("MH12345"))
-        XCTAssertNil(FlightNumber.parse(""))
-        XCTAssertNil(FlightNumber.parse("MAS-ABC"))
+    @Test("Garbage is rejected")
+    func rejectsGarbage() {
+        #expect(FlightNumber.parse("123") == nil)
+        #expect(FlightNumber.parse("MH") == nil)
+        #expect(FlightNumber.parse("MH12345") == nil)
+        #expect(FlightNumber.parse("") == nil)
+        #expect(FlightNumber.parse("MAS-ABC") == nil)
     }
 
     // MARK: - ETA math
 
-    func testETAFromDistanceAndSpeed() {
+    @Test("ETA from distance and speed")
+    func etaFromDistanceAndSpeed() {
         // 300 NM at 400 kt = 45 min
         let eta = FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: 400)
-        XCTAssertNotNil(eta)
-        XCTAssertEqual(eta!, 45, accuracy: 0.01)
+        #expect(eta != nil)
+        #expect(abs(eta! - 45) < 0.01)
     }
 
-    func testETANilWithoutSpeed() {
-        XCTAssertNil(FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: 0))
-        XCTAssertNil(FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: .nan))
+    @Test("ETA is nil without speed")
+    func etaNilWithoutSpeed() {
+        #expect(FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: 0) == nil)
+        #expect(FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: .nan) == nil)
     }
 
-    func testETANilWithoutDistance() {
-        XCTAssertNil(FlightTracker.etaMinutes(distanceNM: .infinity, groundSpeedKnots: 400))
+    @Test("ETA is nil without distance")
+    func etaNilWithoutDistance() {
+        #expect(FlightTracker.etaMinutes(distanceNM: .infinity, groundSpeedKnots: 400) == nil)
     }
 
     // MARK: - Alert state machine
 
-    func testFires30WhenETAFirstDropsBelow30() {
+    @Test("30-minute alert fires once when ETA first drops below 30")
+    func fires30Once() {
         var state = FlightAlertState()
-        XCTAssertNil(state.update(etaMinutes: 45, isLanded: false))
-        XCTAssertNil(state.update(etaMinutes: 32, isLanded: false))
-        XCTAssertEqual(state.update(etaMinutes: 28, isLanded: false), .thirtyMinutes)
+        #expect(state.update(etaMinutes: 45, isLanded: false) == nil)
+        #expect(state.update(etaMinutes: 32, isLanded: false) == nil)
+        #expect(state.update(etaMinutes: 28, isLanded: false) == .thirtyMinutes)
         // Doesn't fire again while still below 30
-        XCTAssertNil(state.update(etaMinutes: 20, isLanded: false))
+        #expect(state.update(etaMinutes: 20, isLanded: false) == nil)
     }
 
-    func testFires15After30() {
+    @Test("15-minute alert fires after 30")
+    func fires15After30() {
         var state = FlightAlertState()
         _ = state.update(etaMinutes: 28, isLanded: false) // 30 fires
-        XCTAssertEqual(state.update(etaMinutes: 14, isLanded: false), .fifteenMinutes)
+        #expect(state.update(etaMinutes: 14, isLanded: false) == .fifteenMinutes)
     }
 
-    func testFires15DirectlyWithout30ForFastDescent() {
+    @Test("Fast descent fires 15 directly, skipping 30")
+    func fires15Directly() {
         var state = FlightAlertState()
         // ETA jumps from 40 straight to 10 — 15 fires (most urgent), 30 never does.
-        XCTAssertNil(state.update(etaMinutes: 40, isLanded: false))
-        XCTAssertEqual(state.update(etaMinutes: 10, isLanded: false), .fifteenMinutes)
-        XCTAssertFalse(state.hasFired30)
+        #expect(state.update(etaMinutes: 40, isLanded: false) == nil)
+        #expect(state.update(etaMinutes: 10, isLanded: false) == .fifteenMinutes)
+        #expect(!state.hasFired30)
     }
 
-    func testLandedFiresOnce() {
+    @Test("Landed fires once")
+    func landedFiresOnce() {
         var state = FlightAlertState()
-        XCTAssertEqual(state.update(etaMinutes: nil, isLanded: true), .landed)
-        XCTAssertNil(state.update(etaMinutes: nil, isLanded: true))
-        XCTAssertTrue(state.hasFiredLanded)
+        #expect(state.update(etaMinutes: nil, isLanded: true) == .landed)
+        #expect(state.update(etaMinutes: nil, isLanded: true) == nil)
+        #expect(state.hasFiredLanded)
     }
 
-    func testLandedTakesPriorityOverETAAlerts() {
+    @Test("Landed takes priority over ETA alerts")
+    func landedTakesPriority() {
         var state = FlightAlertState()
-        XCTAssertEqual(state.update(etaMinutes: 12, isLanded: true), .landed)
-        XCTAssertFalse(state.hasFired15)
-        XCTAssertFalse(state.hasFired30)
+        #expect(state.update(etaMinutes: 12, isLanded: true) == .landed)
+        #expect(!state.hasFired15)
+        #expect(!state.hasFired30)
     }
 
     // MARK: - Live status
 
-    func testIsLiveWhenAirborne() {
-        XCTAssertTrue(FlightPhase.inAir(etaMinutes: 25).isLive)
-        XCTAssertTrue(FlightPhase.inAir(etaMinutes: nil).isLive)
+    @Test("Flight is live when airborne")
+    func isLiveWhenAirborne() {
+        #expect(FlightPhase.inAir(etaMinutes: 25).isLive)
+        #expect(FlightPhase.inAir(etaMinutes: nil).isLive)
     }
 
-    func testIsLiveWhenOnGround() {
-        XCTAssertTrue(FlightPhase.onGround(distanceNM: 3).isLive)
+    @Test("Flight is live when on the ground")
+    func isLiveWhenOnGround() {
+        #expect(FlightPhase.onGround(distanceNM: 3).isLive)
     }
 
-    func testNotLiveWhenNotFoundOrDisappeared() {
-        XCTAssertFalse(FlightPhase.notFound.isLive)
-        XCTAssertFalse(FlightPhase.disappeared.isLive)
-        XCTAssertFalse(FlightPhase.idle.isLive)
-        XCTAssertFalse(FlightPhase.searching.isLive)
+    @Test("Flight is not live when not found or disappeared")
+    func notLiveWhenNotFoundOrDisappeared() {
+        #expect(!FlightPhase.notFound.isLive)
+        #expect(!FlightPhase.disappeared.isLive)
+        #expect(!FlightPhase.idle.isLive)
+        #expect(!FlightPhase.searching.isLive)
     }
 
-    func testLiveLabelMatchesPhase() {
-        XCTAssertEqual(FlightPhase.inAir(etaMinutes: 20).liveLabel, "LIVE — in the air")
-        XCTAssertEqual(FlightPhase.notFound.liveLabel, "Not live right now")
-        XCTAssertEqual(FlightPhase.disappeared.liveLabel, "Landed (left the feed)")
+    @Test("Live label matches phase")
+    func liveLabelMatchesPhase() {
+        #expect(FlightPhase.inAir(etaMinutes: 20).liveLabel == "LIVE — in the air")
+        #expect(FlightPhase.notFound.liveLabel == "Not live right now")
+        #expect(FlightPhase.disappeared.liveLabel == "Landed (left the feed)")
     }
 
     // MARK: - Landed-after-disappearance
 
-    func testDisappearanceNearAirportIsLanded() {
-        XCTAssertTrue(FlightTracker.isLandedAfterDisappearance(lastDistanceNM: 10))
-        XCTAssertTrue(FlightTracker.isLandedAfterDisappearance(lastDistanceNM: 25))
+    @Test("Disappearance near the airport counts as landed")
+    func disappearanceNearAirportIsLanded() {
+        #expect(FlightTracker.isLandedAfterDisappearance(lastDistanceNM: 10))
+        #expect(FlightTracker.isLandedAfterDisappearance(lastDistanceNM: 25))
     }
 
-    func testDisappearanceFarFromAirportIsNotLanded() {
-        XCTAssertFalse(FlightTracker.isLandedAfterDisappearance(lastDistanceNM: 500))
-        XCTAssertFalse(FlightTracker.isLandedAfterDisappearance(lastDistanceNM: nil))
+    @Test("Disappearance far from the airport is not landed")
+    func disappearanceFarIsNotLanded() {
+        #expect(!FlightTracker.isLandedAfterDisappearance(lastDistanceNM: 500))
+        #expect(!FlightTracker.isLandedAfterDisappearance(lastDistanceNM: nil))
     }
 
     // MARK: - Airports catalog sanity
 
-    func testAirportCodesAreUnique() {
+    @Test("Airport IATA codes are unique")
+    func airportCodesAreUnique() {
         let codes = Set(Airport.common.map(\.iata))
-        XCTAssertEqual(codes.count, Airport.common.count, "duplicate IATA codes in catalog")
-        XCTAssertGreaterThan(Airport.common.count, 50)
+        #expect(codes.count == Airport.common.count, "duplicate IATA codes in catalog")
+        #expect(Airport.common.count > 50)
     }
 
-    func testAirportCoordinatesAreValid() {
+    @Test("Airport coordinates are valid")
+    func airportCoordinatesAreValid() {
         for airport in Airport.common {
-            XCTAssertTrue((-90...90).contains(airport.coordinate.latitude), "\(airport.iata) lat")
-            XCTAssertTrue((-180...180).contains(airport.coordinate.longitude), "\(airport.iata) lon")
+            #expect((-90...90).contains(airport.coordinate.latitude), "\(airport.iata) lat")
+            #expect((-180...180).contains(airport.coordinate.longitude), "\(airport.iata) lon")
         }
     }
 }
