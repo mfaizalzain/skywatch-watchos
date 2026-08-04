@@ -20,6 +20,10 @@ Built for personal sideloading. It is not intended for the App Store.
   distance, bearing arrow, altitude with a climb/descent chevron, and ground speed. Swipe to pin.
 - **Detail** — identity, position, motion, status and signal quality, plus a small map showing the
   aircraft, you, and the line between. Only fields the feed actually sent are shown.
+- **Track** — enter a flight number (e.g. `MH123` or `MAS123`), pick the arrival airport, and get a
+  live ETA countdown to landing with watch notifications at **30 min**, **15 min**, and **on the
+  ground** — built for meeting someone at the gate. A green **● LIVE** badge shows the flight is
+  transmitting a position right now; ETA comes from the aircraft's live position and ground speed.
 - **Settings** — radius, refresh interval, units, heading-up vs north-up, filters, proximity haptic.
 - **Complication** — a Smart Stack widget with the count in range and the nearest aircraft.
 
@@ -89,8 +93,11 @@ installing the app.
 Covered: response decoding (including `alt_baro: "ground"`, `~`-prefixed hexes, `lastPosition`-only
 and `rr_lat`-only targets, `msg` errors, and a malformed member inside a valid `ac` array),
 great-circle distance and bearing against published examples, antimeridian and pole cases, the
-heading filter's 359° → 0° wrap, rate-limiter spacing under concurrent callers, and the full merge
-lifecycle from first appearance to being dropped after two missed cycles.
+heading filter's 359° → 0° wrap, rate-limiter spacing under concurrent callers, the full merge
+lifecycle from first appearance to being dropped after two missed cycles, and flight tracking —
+flight-number parsing (IATA → ICAO callsign conversion, normalisation, garbage rejection), ETA
+math, the one-shot 30/15/landed alert state machine, live/not-live phase logic, landed-after-
+disappearance detection, and airport-catalog sanity (unique IATA codes, valid coordinates).
 
 The rate-limiter tests wait on a real clock, so the suite takes roughly ten seconds.
 
@@ -114,19 +121,31 @@ Nothing is coloured decoratively. If something is amber, its position is uncerta
 receiver's rough guess and not a fix at all; MLAT is badged; `mode_s` targets have no position and
 are counted under "heard, no position" rather than being drawn somewhere plausible.
 
-**Rate limiting is structural.** Every endpoint, including the detail screen's, goes through one
-actor that reserves its slot before suspending, so concurrent callers queue instead of firing
-together. The minimum spacing is 1.2 s against a documented limit of 1 request per second.
+**Rate limiting is structural.** Every endpoint, including the detail screen's and the flight
+tracker's, goes through one actor that reserves its slot before suspending, so concurrent callers
+queue instead of firing together. The minimum spacing is 1.2 s against a documented limit of 1
+request per second.
 
 **Battery.** Polling only runs while the scene is active, backs off to 60 s when the display is
 luminance-reduced, and the compass runs only while the radar is on screen. Location accuracy is set
-to 100 m with a 250 m distance filter — far more than a 20 nm radius needs.
+to 100 m with a 250 m distance filter — far more than a 20 nm radius needs. Flight tracking polls
+the callsign endpoint on the same scene-gated cadence (30 s, 60 s wrist-down); the alerts are local
+notifications fired by the watch itself, so there is no background work and no server.
+
+**Landing detection is inference, not a status feed.** The ADS-B API has no "landed" field — the
+app infers it: the transponder reports `ground` near the arrival airport, or a tracked flight
+powers down and leaves the feed. ETA is great-circle distance over current ground speed, so it is
+honest about being an estimate. A flight that is "not in the feed" may simply not have departed
+yet, or may be out of coverage — the UI says so rather than guessing.
 
 ## Deliberately not included
 
 - **Background location.** The app scans while you are looking at it, and not otherwise.
 - **Push notifications.** They would need a server polling the API for you. The on-device proximity
-  haptic covers the same need while the app is open.
+  haptic covers the same need while the app is open, and flight tracking fires *local*
+  notifications (30 / 15 / landed) from the watch itself while the Track tab is active — no server,
+  no background execution. A flight that lands while the app is closed will not notify; the alerts
+  are for waiting at the airport with the screen on, not a background watch service.
 - **CloudKit.** Settings are a handful of values in an App Group.
 
 ## Complication expectations
