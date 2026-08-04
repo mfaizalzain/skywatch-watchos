@@ -273,7 +273,7 @@ struct TrackFlightView: View {
         switch status {
         case .landed, .arrived: .green
         case .cancelled, .diverted: .red
-        default: .tint
+        default: Palette.dataCyan
         }
     }
 
