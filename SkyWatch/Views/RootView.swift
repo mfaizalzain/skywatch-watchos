@@ -11,6 +11,20 @@ enum ScanTab: Hashable {
     case track
 }
 
+private struct RequestTrackTabKey: EnvironmentKey {
+    static let defaultValue: () -> Void = {}
+}
+
+extension EnvironmentValues {
+    /// Switches the root tab to Track, popping any pushed screen first. Set by
+    /// `RootView`; used by the list's swipe action and the detail screen's
+    /// track button to hand a callsign to the Track tab.
+    var requestTrackTab: () -> Void {
+        get { self[RequestTrackTabKey.self] }
+        set { self[RequestTrackTabKey.self] = newValue }
+    }
+}
+
 struct RootView: View {
     @Environment(ScanStore.self) private var store
     @Environment(FlightTrackStore.self) private var flightStore
@@ -41,6 +55,12 @@ struct RootView: View {
                 switch route {
                 case .settings: SettingsView()
                 }
+            }
+            .environment(\.requestTrackTab) {
+                // Pop any pushed screen (e.g. an aircraft detail) so the Track
+                // tab is actually visible, then switch to it.
+                path = NavigationPath()
+                tab = .track
             }
         }
         // Polling is tied to the scene, not to a view's lifetime: nothing runs in the background.

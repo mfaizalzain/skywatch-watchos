@@ -9,6 +9,8 @@ struct AircraftDetailView: View {
     let hex: String
 
     @Environment(ScanStore.self) private var store
+    @Environment(FlightTrackStore.self) private var flightStore
+    @Environment(\.requestTrackTab) private var requestTrackTab
     @State private var refreshedAircraft: Aircraft?
     /// Origin → destination from the cached AeroAPI lookup (nil until known,
     /// or when the build has no key).
@@ -31,6 +33,10 @@ struct AircraftDetailView: View {
             if let aircraft, let target {
                 VStack(alignment: .leading, spacing: 10) {
                     header(aircraft)
+                    if let callsign = aircraft.callsign,
+                       let flightNumber = FlightNumber.parse(callsign) {
+                        trackButton(flightNumber: flightNumber)
+                    }
                     map(target)
                     identity(aircraft)
                     routeSection
@@ -153,6 +159,24 @@ struct AircraftDetailView: View {
                 DetailRow("Privacy", "LADD", tint: Palette.cautionAmber)
             }
         }
+    }
+
+    /// Start tracking this aircraft's flight number in the Track tab (with
+    /// alerts at 30/15/landed). Only offered when the callsign parses as a
+    /// flight number.
+    private func trackButton(flightNumber: FlightNumber) -> some View {
+        Button {
+            flightStore.startTracking(number: flightNumber)
+            Haptics.flightMilestone()
+            requestTrackTab()
+        } label: {
+            Label("Track this flight", systemImage: "location.fill")
+                .font(.system(.body, design: .rounded).weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.bordered)
+        .tint(Palette.dataCyan)
     }
 
     /// Origin → destination from FlightAware (cached, metered). Only appears
@@ -365,6 +389,8 @@ private struct DetailRow: View {
     NavigationStack {
         AircraftDetailView(hex: PreviewData.airliner.hex ?? "")
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }
 
@@ -372,6 +398,8 @@ private struct DetailRow: View {
     NavigationStack {
         AircraftDetailView(hex: PreviewData.emergency.hex ?? "")
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }
 
@@ -379,5 +407,7 @@ private struct DetailRow: View {
     NavigationStack {
         AircraftDetailView(hex: "nosuchhex")
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }

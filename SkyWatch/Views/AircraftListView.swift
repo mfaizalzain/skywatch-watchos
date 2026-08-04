@@ -3,7 +3,9 @@ import SwiftUI
 /// Everything in range, nearest first, two lines per aircraft.
 struct AircraftListView: View {
     @Environment(ScanStore.self) private var store
+    @Environment(FlightTrackStore.self) private var flightStore
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @Environment(\.requestTrackTab) private var requestTrackTab
 
     private var settings: SettingsStore { store.settings }
     private var targets: [TrackedTarget] { store.visibleTargets }
@@ -48,6 +50,19 @@ struct AircraftListView: View {
                         )
                     }
                     .tint(Palette.targetMagenta)
+                }
+                .swipeActions(edge: .trailing) {
+                    if let callsign = target.aircraft.callsign,
+                       let flightNumber = FlightNumber.parse(callsign) {
+                        Button {
+                            flightStore.startTracking(number: flightNumber)
+                            Haptics.flightMilestone()
+                            requestTrackTab()
+                        } label: {
+                            Label("Track", systemImage: "location.fill")
+                        }
+                        .tint(Palette.dataCyan)
+                    }
                 }
             }
 
@@ -165,6 +180,8 @@ struct AircraftRow: View {
     NavigationStack {
         AircraftListView()
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }
 
@@ -172,6 +189,8 @@ struct AircraftRow: View {
     NavigationStack {
         AircraftListView()
             .environment(ScanStore.previewStore(targets: PreviewData.dense))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }
 
@@ -179,6 +198,8 @@ struct AircraftRow: View {
     NavigationStack {
         AircraftListView()
             .environment(ScanStore.previewStore(targets: []))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }
 
@@ -186,5 +207,7 @@ struct AircraftRow: View {
     NavigationStack {
         AircraftListView()
             .environment(ScanStore.previewStore(targets: PreviewData.handful, error: .offline))
+            .environment(FlightTrackStore())
+            .environment(\.requestTrackTab) {}
     }
 }
