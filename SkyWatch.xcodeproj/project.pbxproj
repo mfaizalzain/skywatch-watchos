@@ -699,7 +699,7 @@
 		6C97125375D4517FCC88ABF8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				AEROAPI_KEY = ;
+				AEROAPI_KEY = "";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SkyWatch/SkyWatch.entitlements;
@@ -721,7 +721,7 @@
 		AD7263F62701ACC2A6038702 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				AEROAPI_KEY = ;
+				AEROAPI_KEY = "";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SkyWatch/SkyWatch.entitlements;

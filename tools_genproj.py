@@ -604,7 +604,8 @@ CONTAINER_SETTINGS = {
 }
 
 WATCHAPP_SETTINGS = {
-    "AEROAPI_KEY": "",
+    # Must be a quoted empty string: an unquoted empty value is a parse error.
+    "AEROAPI_KEY": '""',
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
     "CODE_SIGN_ENTITLEMENTS": "SkyWatch/SkyWatch.entitlements",
