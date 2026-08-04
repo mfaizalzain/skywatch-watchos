@@ -139,10 +139,11 @@ request per second.
 **Battery.** Polling only runs while the scene is active, backs off to 60 s when the display is
 luminance-reduced, and the compass runs only while the radar is on screen. Location accuracy is set
 to 100 m with a 250 m distance filter — far more than a 20 nm radius needs. Flight tracking polls
-the callsign endpoint on the same scene-gated cadence (30 s, 60 s wrist-down); the AeroAPI status
-layer is metered and polls at a fifth of that (every 5 minutes, ≈ 12 queries/hour ≈ $0.06 inside
-the feeder's $10/month Personal allowance). The alerts are local notifications fired by the watch
-itself — no server, no background execution.
+the callsign endpoint on the same scene-gated cadence but slower — tracking is a wait, not a
+live radar: 60 s on wrist-up, 2 min on wrist-down; the AeroAPI status layer is metered and polls
+at a fifth of that (every 5 minutes, ≈ 12 queries/hour ≈ $0.06 inside the feeder's $10/month
+Personal allowance). The alerts are local notifications fired by the watch itself — no server, no
+background execution.
 
 **Landing detection is layered.** The ADS-B feed has no "landed" field, so the app infers it: the
 transponder reports `ground` near the arrival airport, or a tracked flight powers down and leaves
