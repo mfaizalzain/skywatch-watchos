@@ -38,7 +38,9 @@ final class FlightTrackTests: XCTestCase {
 
     func testETAFromDistanceAndSpeed() {
         // 300 NM at 400 kt = 45 min
-        XCTAssertEqual(FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: 400), 45, accuracy: 0.01)
+        let eta = FlightTracker.etaMinutes(distanceNM: 300, groundSpeedKnots: 400)
+        XCTAssertNotNil(eta)
+        XCTAssertEqual(eta!, 45, accuracy: 0.01)
     }
 
     func testETANilWithoutSpeed() {
