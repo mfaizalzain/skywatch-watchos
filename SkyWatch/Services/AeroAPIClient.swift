@@ -139,7 +139,7 @@ actor AeroAPIClient {
         case 404:
             throw AeroAPIError.notFound
         case 429:
-            limiter.backOff(rateLimitBackoff)
+            await limiter.backOff(rateLimitBackoff)
             throw AeroAPIError.rateLimited
         default:
             throw AeroAPIError.server(status: http.statusCode)
