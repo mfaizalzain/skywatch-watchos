@@ -554,6 +554,25 @@ WIDGET_SETTINGS = {
     "SWIFT_EMIT_LOC_STRINGS": "YES",
 }
 
+# Manual signing for Release config only. PROFILE_NAME / PROFILE_NAME_SHAREEXT
+# are exported by the release workflow from the installed provisioning
+# profiles; xcodebuild expands $(...) from the environment. Target-scoped (set
+# here, never on the xcodebuild command line) so the settings don't leak into
+# the widget/tests targets.
+APP_RELEASE_SIGNING = {
+    "CODE_SIGN_STYLE": "Manual",
+    "CODE_SIGN_IDENTITY": '"Apple Distribution"',
+    "DEVELOPMENT_TEAM": "S232V5F699",
+    "PROVISIONING_PROFILE_SPECIFIER": '"$(PROFILE_NAME)"',
+}
+
+WIDGET_RELEASE_SIGNING = {
+    "CODE_SIGN_STYLE": "Manual",
+    "CODE_SIGN_IDENTITY": '"Apple Distribution"',
+    "DEVELOPMENT_TEAM": "S232V5F699",
+    "PROVISIONING_PROFILE_SPECIFIER": '"$(PROFILE_NAME_SHAREEXT)"',
+}
+
 TEST_SETTINGS = {
     "CODE_SIGN_STYLE": "Automatic",
     "CURRENT_PROJECT_VERSION": "1",
@@ -589,7 +608,12 @@ def config_section():
 
     for scope, settings in (("app", APP_SETTINGS), ("widget", WIDGET_SETTINGS), ("tests", TEST_SETTINGS)):
         emit_config(configs[(scope, "Debug")], "Debug", settings)
-        emit_config(configs[(scope, "Release")], "Release", settings)
+        release = dict(settings)
+        if scope == "app":
+            release.update(APP_RELEASE_SIGNING)
+        elif scope == "widget":
+            release.update(WIDGET_RELEASE_SIGNING)
+        emit_config(configs[(scope, "Release")], "Release", release)
 
     w("/* End XCBuildConfiguration section */")
     w("")
