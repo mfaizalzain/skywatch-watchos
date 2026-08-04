@@ -664,7 +664,7 @@
 				CODE_SIGN_ENTITLEMENTS = SkyWatch/SkyWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\\"SkyWatch/Preview Content\\"";
+				DEVELOPMENT_ASSET_PATHS = "\"SkyWatch/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SkyWatch/Info.plist;
@@ -686,7 +686,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\\"SkyWatch/Preview Content\\"";
+				DEVELOPMENT_ASSET_PATHS = "\"SkyWatch/Preview Content\"";
 				DEVELOPMENT_TEAM = S232V5F699;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;

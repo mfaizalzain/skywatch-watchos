@@ -605,7 +605,7 @@ WATCHAPP_SETTINGS = {
     "CODE_SIGN_ENTITLEMENTS": "SkyWatch/SkyWatch.entitlements",
     "CODE_SIGN_STYLE": "Automatic",
     "CURRENT_PROJECT_VERSION": "1",
-    "DEVELOPMENT_ASSET_PATHS": '\"\\\\\"SkyWatch/Preview Content\\\\\"\"',
+    "DEVELOPMENT_ASSET_PATHS": '"\\"SkyWatch/Preview Content\\""',
     "ENABLE_PREVIEWS": "YES",
     "GENERATE_INFOPLIST_FILE": "NO",
     "INFOPLIST_FILE": "SkyWatch/Info.plist",
