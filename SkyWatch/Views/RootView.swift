@@ -8,10 +8,12 @@ enum Route: Hashable {
 enum ScanTab: Hashable {
     case radar
     case list
+    case track
 }
 
 struct RootView: View {
     @Environment(ScanStore.self) private var store
+    @Environment(FlightTrackStore.self) private var flightStore
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
@@ -26,6 +28,9 @@ struct RootView: View {
 
                 AircraftListView()
                     .tag(ScanTab.list)
+
+                TrackFlightView()
+                    .tag(ScanTab.track)
             }
             .tabViewStyle(.verticalPage)
             .containerBackground(Palette.scopeBase, for: .navigation)
@@ -41,9 +46,11 @@ struct RootView: View {
         // Polling is tied to the scene, not to a view's lifetime: nothing runs in the background.
         .onChange(of: scenePhase, initial: true) { _, phase in
             store.setActive(phase == .active)
+            flightStore.setActive(phase == .active)
         }
         .onChange(of: isLuminanceReduced, initial: true) { _, reduced in
             store.isLuminanceReduced = reduced
+            flightStore.isLuminanceReduced = reduced
         }
     }
 }
@@ -51,10 +58,12 @@ struct RootView: View {
 #Preview("Root") {
     RootView()
         .environment(ScanStore.previewStore(targets: PreviewData.handful))
+        .environment(FlightTrackStore())
 }
 
 #Preview("Always-On") {
     RootView()
         .environment(ScanStore.previewStore(targets: PreviewData.handful, isLuminanceReduced: true))
+        .environment(FlightTrackStore())
         .environment(\.isLuminanceReduced, true)
 }

@@ -67,6 +67,8 @@ TEST_SHARED = [
     "SkyWatch/Geo/Geodesy.swift",
     "SkyWatch/Models/Aircraft.swift",
     "SkyWatch/Models/AircraftResponse.swift",
+    "SkyWatch/Models/Airports.swift",
+    "SkyWatch/Models/FlightTrack.swift",
     "SkyWatch/Models/Units.swift",
     "SkyWatch/Services/RateLimiter.swift",
     "SkyWatch/State/TrackedTarget.swift",
