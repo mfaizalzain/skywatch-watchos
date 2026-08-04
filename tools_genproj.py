@@ -628,7 +628,7 @@ WIDGET_SETTINGS = {
     "INFOPLIST_FILE": "SkyWatchWidget/Info.plist",
     "INFOPLIST_KEY_CFBundleDisplayName": "SkyWatch",
     "MARKETING_VERSION": "1.0",
-    "PRODUCT_BUNDLE_IDENTIFIER": BUNDLE_ROOT + ".widget",
+    "PRODUCT_BUNDLE_IDENTIFIER": BUNDLE_ROOT + ".watchkitapp.widget",
     "PRODUCT_NAME": '"$(TARGET_NAME)"',
     "SKIP_INSTALL": "YES",
     "SWIFT_EMIT_LOC_STRINGS": "YES",

@@ -126,7 +126,7 @@ jobs:
               <string>${PROFILE_NAME}</string>
               <key>com.fmz.skywatch.watchkitapp</key>
               <string>${PROFILE_NAME_WATCHAPP}</string>
-              <key>com.fmz.skywatch.widget</key>
+              <key>com.fmz.skywatch.watchkitapp.widget</key>
               <string>${PROFILE_NAME_SHAREEXT}</string>
             </dict>
             <key>uploadSymbols</key>
