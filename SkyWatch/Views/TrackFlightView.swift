@@ -132,8 +132,11 @@ struct TrackFlightView: View {
     private var headerRow: some View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
-                Text(store.flightNumber?.callsign ?? "—")
-                    .font(.system(.title3, design: .rounded).weight(.bold))
+                HStack(spacing: 6) {
+                    Text(store.flightNumber?.callsign ?? "—")
+                        .font(.system(.title3, design: .rounded).weight(.bold))
+                    liveBadge
+                }
                 if let airport = store.airport {
                     Text("arriving \(airport.iata) · \(airport.city)")
                         .font(.caption)
@@ -145,6 +148,31 @@ struct TrackFlightView: View {
                 ProgressView()
                     .controlSize(.small)
             }
+        }
+    }
+
+    /// Green dot + label when the flight is transmitting a live position.
+    @ViewBuilder
+    private var liveBadge: some View {
+        if store.phase.isLive {
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 7, height: 7)
+                Text("LIVE")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.green)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(.green.opacity(0.15)))
+        } else if store.phase != .idle {
+            Text("NOT LIVE")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(.secondary.opacity(0.15)))
         }
     }
 
@@ -182,8 +210,8 @@ struct TrackFlightView: View {
                 statusRow(icon: "checkmark.seal.fill", title: "Landed",
                           detail: "Aircraft powered down near the airport")
             case .notFound:
-                statusRow(icon: "questionmark.circle", title: "Not found",
-                          detail: "Not in the feed — not departed, out of coverage, or already landed")
+                statusRow(icon: "questionmark.circle", title: "Not live right now",
+                          detail: "Flight not in the feed — not departed, out of coverage, or already landed")
             }
         }
         .frame(maxWidth: .infinity)

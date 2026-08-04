@@ -89,6 +89,30 @@ final class FlightTrackTests: XCTestCase {
         XCTAssertFalse(state.hasFired30)
     }
 
+    // MARK: - Live status
+
+    func testIsLiveWhenAirborne() {
+        XCTAssertTrue(FlightPhase.inAir(etaMinutes: 25).isLive)
+        XCTAssertTrue(FlightPhase.inAir(etaMinutes: nil).isLive)
+    }
+
+    func testIsLiveWhenOnGround() {
+        XCTAssertTrue(FlightPhase.onGround(distanceNM: 3).isLive)
+    }
+
+    func testNotLiveWhenNotFoundOrDisappeared() {
+        XCTAssertFalse(FlightPhase.notFound.isLive)
+        XCTAssertFalse(FlightPhase.disappeared.isLive)
+        XCTAssertFalse(FlightPhase.idle.isLive)
+        XCTAssertFalse(FlightPhase.searching.isLive)
+    }
+
+    func testLiveLabelMatchesPhase() {
+        XCTAssertEqual(FlightPhase.inAir(etaMinutes: 20).liveLabel, "LIVE — in the air")
+        XCTAssertEqual(FlightPhase.notFound.liveLabel, "Not live right now")
+        XCTAssertEqual(FlightPhase.disappeared.liveLabel, "Landed (left the feed)")
+    }
+
     // MARK: - Landed-after-disappearance
 
     func testDisappearanceNearAirportIsLanded() {

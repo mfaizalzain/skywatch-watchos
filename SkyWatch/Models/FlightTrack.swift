@@ -87,6 +87,25 @@ enum FlightPhase: Equatable, Sendable {
     case disappeared
     /// Never seen in the feed (not departed, out of coverage, or wrong number).
     case notFound
+
+    /// Whether the flight is transmitting a live position right now.
+    var isLive: Bool {
+        if case .inAir = self { return true }
+        if case .onGround = self { return true }
+        return false
+    }
+
+    /// One-line answer to "is this flight currently live?" for the status card.
+    var liveLabel: String {
+        switch self {
+        case .idle: return "Not tracking"
+        case .searching: return "Checking…"
+        case .inAir: return "LIVE — in the air"
+        case .onGround: return "On the ground"
+        case .disappeared: return "Landed (left the feed)"
+        case .notFound: return "Not live right now"
+        }
+    }
 }
 
 /// The three pickup milestones, each fired once per tracking session.

@@ -46,8 +46,6 @@ final class FlightTrackStore {
         self.notifier = notifier
     }
 
-    deinit { pollTask?.cancel() }
-
     // MARK: - Lifecycle
 
     /// Driven by `scenePhase`, mirroring `ScanStore` — no polling off-screen.
@@ -145,7 +143,9 @@ final class FlightTrackStore {
             }
 
             // Airborne: ETA from distance + ground speed.
-            let eta = FlightTracker.etaMinutes(distanceNM: distance, groundSpeedKnots: aircraft.groundSpeed)
+            let eta = aircraft.groundSpeed.flatMap {
+                FlightTracker.etaMinutes(distanceNM: distance, groundSpeedKnots: $0)
+            }
             phase = .inAir(etaMinutes: eta)
             fireAlertsIfNeeded(isLanded: false)
 
@@ -154,9 +154,9 @@ final class FlightTrackStore {
         } catch let failure as SkyWatchError {
             error = failure
             logger.warning("Poll failed: \(String(describing: failure), privacy: .public)")
-        } catch {
-            error = .decoding(underlying: error.localizedDescription)
-            logger.warning("Poll failed: \(error.localizedDescription)")
+        } catch let other {
+            self.error = .decoding(underlying: other.localizedDescription)
+            logger.warning("Poll failed: \(other.localizedDescription)")
         }
     }
 
