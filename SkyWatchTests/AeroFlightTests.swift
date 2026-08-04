@@ -173,4 +173,56 @@ struct AeroFlightPickerTests {
         #expect(picked?.phase == .arrived)
         #expect(picked?.gateArrival != nil)
     }
+
+    // MARK: - Airport refs & auto-detection
+
+    @Test("Decodes origin/destination with IATA code")
+    func decodesAirportRefs() throws {
+        let response = try JSONDecoder().decode(
+            AeroFlightResponse.self,
+            from: Data(#"""
+            {"flights": [{
+              "ident": "MAS123", "fa_flight_id": "x",
+              "status": "En Route",
+              "origin": {"code": "WMKK", "code_icao": "WMKK", "code_iata": "KUL",
+                         "city": "Sepang", "name": "Kuala Lumpur Intl"},
+              "destination": {"code": "YSSY", "code_icao": "YSSY", "code_iata": "SYD",
+                              "city": "Sydney", "name": "Sydney Intl"}
+            }]}
+            """#.utf8)
+        )
+        let flight = try #require(response.flights.first)
+        let origin = try #require(flight.origin)
+        let destination = try #require(flight.destination)
+        #expect(origin.iataCode == "KUL")
+        #expect(origin.displayLabel == "KUL")
+        #expect(destination.iataCode == "SYD")
+        #expect(destination.displayLabel == "SYD")
+    }
+
+    @Test("iataCode falls back to a 3-letter code; displayLabel falls back to city")
+    func airportLabelFallbacks() {
+        let icaoOnly = AeroAirport(code: "WMKK", codeIATA: nil, name: nil, city: "Sepang",
+                                   terminal: nil, gate: nil)
+        #expect(icaoOnly.iataCode == nil)  // 4-letter ICAO, not IATA
+        #expect(icaoOnly.displayLabel == "Sepang")
+
+        let cityOnly = AeroAirport(code: nil, codeIATA: nil, name: nil, city: "Sydney",
+                                   terminal: nil, gate: nil)
+        #expect(cityOnly.iataCode == nil)
+        #expect(cityOnly.displayLabel == "Sydney")
+
+        let bare = AeroAirport(code: nil, codeIATA: nil, name: nil, city: nil,
+                               terminal: nil, gate: nil)
+        #expect(bare.displayLabel == "—")
+    }
+
+    @Test("Airport.find resolves catalog IATA codes case-insensitively")
+    func airportFind() {
+        #expect(Airport.find(iata: "KUL")?.city == "Kuala Lumpur")
+        #expect(Airport.find(iata: "kul")?.city == "Kuala Lumpur")
+        #expect(Airport.find(iata: "SIN")?.city == "Singapore")
+        #expect(Airport.find(iata: "ZZZ") == nil)
+        #expect(Airport.find(iata: "KULJ") == nil)
+    }
 }

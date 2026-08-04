@@ -34,6 +34,9 @@ final class FlightTrackStore {
     private(set) var gate: String?
     /// Estimated/scheduled gate arrival, when known.
     private(set) var officialArrival: Date?
+    /// Route: departure airport → destination airport, e.g. "SIN → KUL".
+    /// Built from FlightAware's origin/destination; nil without the layer.
+    private(set) var route: String?
     /// A human-readable problem with the AeroAPI layer (bad key, no quota…).
     private(set) var aeroError: String?
     /// Set when the landed alert fires: polling stops (the pickup job is done)
@@ -86,8 +89,10 @@ final class FlightTrackStore {
         }
     }
 
-    /// Begins tracking. `airport` is the arrival airport (pickup point).
-    func startTracking(number: FlightNumber, airport: Airport) {
+    /// Begins tracking. `airport` may be nil when FlightAware is expected to
+    /// auto-detect the destination from its own data; until it is known the
+    /// live ETA is unavailable (it needs the destination's coordinates).
+    func startTracking(number: FlightNumber, airport: Airport? = nil) {
         self.flightNumber = number
         self.airport = airport
         self.phase = .searching
@@ -98,6 +103,7 @@ final class FlightTrackStore {
         self.terminal = nil
         self.gate = nil
         self.officialArrival = nil
+        self.route = nil
         self.aeroError = nil
         self.lastAeroPoll = nil
         self.hasAutoStopped = false
@@ -117,8 +123,18 @@ final class FlightTrackStore {
         terminal = nil
         gate = nil
         officialArrival = nil
+        route = nil
         aeroError = nil
         hasAutoStopped = false
+    }
+
+    /// Sets the arrival airport mid-tracking — the fallback when FlightAware
+    /// could not resolve the destination (no key in the build, or the
+    /// destination is not in the airport catalog). The next poll computes
+    /// distance and ETA against it.
+    func selectAirport(_ airport: Airport) {
+        guard self.airport == nil else { return }
+        self.airport = airport
     }
 
     // MARK: - Polling
@@ -148,15 +164,24 @@ final class FlightTrackStore {
     }
 
     private func refresh() async {
-        guard let flightNumber, let airport else { return }
+        guard let flightNumber else { return }
         isLoading = true
         defer { isLoading = false }
 
         // AeroAPI is metered: refresh at most once per ten minutes, and only
-        // when a key is present in the build. Status and gate move slowly;
-        // a 10-minute cadence halves the cost of the 5-minute one.
+        // when a key is present in the build. Runs even before the arrival
+        // airport is known — resolving the destination is how the airport is
+        // auto-detected.
         if aeroClient != nil, lastAeroPoll == nil || Date().timeIntervalSince(lastAeroPoll!) >= 600 {
             await refreshAero(flightNumber: flightNumber)
+        }
+
+        // The live ETA needs the destination's coordinates. Until the airport
+        // is known (auto-detected from FlightAware, or chosen by the user)
+        // there is nothing to measure against.
+        guard let airport else {
+            phase = .searching
+            return
         }
 
         do {
@@ -231,7 +256,18 @@ final class FlightTrackStore {
             terminal = flight.destination?.terminal
             gate = flight.destination?.gate
             officialArrival = flight.gateArrival
+            route = Self.routeLabel(origin: flight.origin, destination: flight.destination)
             aeroError = nil
+
+            // Auto-detect the arrival airport from FlightAware's destination
+            // when the user hasn't chosen one: the destination code resolves
+            // against the airport catalog, which carries the coordinates the
+            // live ETA needs. If the destination is not in the catalog the
+            // picker remains the way in.
+            if airport == nil, let code = flight.destination?.iataCode,
+               let found = Airport.find(iata: code) {
+                airport = found
+            }
 
             // Official landed beats the feed-based inference: FlightAware
             // knows the flight has arrived even if the transponder is already
@@ -285,6 +321,13 @@ final class FlightTrackStore {
     }
 
     // MARK: - Helpers
+
+    /// "SIN → KUL" style route label, built from FlightAware's origin and
+    /// destination airport refs. Skipped if either side is unknown.
+    private static func routeLabel(origin: AeroAirport?, destination: AeroAirport?) -> String? {
+        guard let origin, let destination else { return nil }
+        return "\(origin.displayLabel) → \(destination.displayLabel)"
+    }
 
     private static func distance(from aircraft: Aircraft, to airport: Airport) -> Double {
         guard let lat = aircraft.lat, let lon = aircraft.lon else { return .infinity }

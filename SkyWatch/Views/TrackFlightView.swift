@@ -36,7 +36,7 @@ struct TrackFlightView: View {
                 pickerPresented = true
             } label: {
                 HStack {
-                    Text(selectedAirport.map { "\($0.iata) · \($0.city)" } ?? "Arrival airport")
+                    Text(selectedAirport.map { "\($0.iata) · \($0.city)" } ?? "Arrival airport: Auto (FlightAware)")
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Spacer()
@@ -64,7 +64,7 @@ struct TrackFlightView: View {
                     .padding(.vertical, 8)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(flightNumberText.trimmed.isEmpty || selectedAirport == nil)
+            .disabled(flightNumberText.trimmed.isEmpty)
             .padding(.top, 4)
         }
         .padding(.horizontal, 12)
@@ -77,7 +77,11 @@ struct TrackFlightView: View {
         NavigationStack {
             List(Airport.common) { airport in
                 Button {
-                    selectedAirport = airport
+                    if store.flightNumber == nil {
+                        selectedAirport = airport
+                    } else {
+                        store.selectAirport(airport)
+                    }
                     pickerPresented = false
                 } label: {
                     HStack {
@@ -89,7 +93,8 @@ struct TrackFlightView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if selectedAirport == airport {
+                        let current = store.airport ?? selectedAirport
+                        if current == airport {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(.tint)
                         }
@@ -107,12 +112,13 @@ struct TrackFlightView: View {
     }
 
     private func startTracking() {
-        guard let parsed = FlightNumber.parse(flightNumberText), let airport = selectedAirport else {
+        guard let parsed = FlightNumber.parse(flightNumberText) else {
             parseError = true
             return
         }
         parseError = false
-        store.startTracking(number: parsed, airport: airport)
+        // Airport is optional: nil means "auto-detect from FlightAware".
+        store.startTracking(number: parsed, airport: selectedAirport)
     }
 
     // MARK: - Tracking
@@ -184,8 +190,25 @@ struct TrackFlightView: View {
             case .idle:
                 EmptyView()
             case .searching:
-                statusRow(icon: "magnifyingglass", title: "Searching for flight…",
-                          detail: "Waiting for the aircraft to appear in the feed")
+                if store.airport == nil {
+                    // FlightAware couldn't resolve the destination (no key in
+                    // the build, or it isn't in the catalog) — the picker is
+                    // the fallback to start measuring distance/ETA.
+                    statusRow(icon: "magnifyingglass", title: "Choose arrival airport",
+                              detail: "FlightAware didn't recognise it — pick the destination to start ETA")
+                    Button {
+                        pickerPresented = true
+                    } label: {
+                        Label("Choose Airport", systemImage: "mappin.and.ellipse")
+                            .font(.system(.body, design: .rounded).weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    statusRow(icon: "magnifyingglass", title: "Searching for flight…",
+                              detail: "Waiting for the aircraft to appear in the feed")
+                }
             case let .inAir(eta):
                 if let eta {
                     Text(etaText(eta))
@@ -236,6 +259,12 @@ struct TrackFlightView: View {
                         Text(officialTitle(status))
                             .font(.system(.caption, design: .rounded).weight(.semibold))
                         Spacer()
+                    }
+                    if let route = store.route {
+                        Text(route)
+                            .font(.system(.caption2, design: .monospaced).weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let gate = store.gate {
                         Text("Gate \(gate)\(store.terminal.map { " · Terminal \($0)" } ?? "")")

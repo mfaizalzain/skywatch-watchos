@@ -70,11 +70,38 @@ struct AeroFlight: Decodable, Sendable, Equatable {
 /// Arrival airport reference (`destination`), with the gate the picker-up
 /// meets at.
 struct AeroAirport: Decodable, Sendable, Equatable {
+    /// "ICAO/IATA/LID code or string indicating the location where tracking
+    /// of the flight began/ended" — for scheduled flights this is the IATA
+    /// code; for position-only flights it can be an ICAO or LID code.
     let code: String?
+    /// The unambiguous IATA code when the response carries one.
+    let codeIATA: String?
     let name: String?
     let city: String?
     let terminal: String?
     let gate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case code
+        case codeIATA = "code_iata"
+        case name
+        case city
+        case terminal
+        case gate
+    }
+
+    /// The IATA code when we can be sure it is one (three letters); falls
+    /// back to the generic `code` field.
+    var iataCode: String? {
+        if let codeIATA, codeIATA.count == 3 { return codeIATA }
+        if let code, code.count == 3, code == code.uppercased() { return code }
+        return nil
+    }
+
+    /// Compact display label: code preferred, city fallback, e.g. "KUL".
+    var displayLabel: String {
+        iataCode ?? city ?? code ?? "—"
+    }
 }
 
 /// The small set of flight states the Track tab distinguishes. `parse` is a

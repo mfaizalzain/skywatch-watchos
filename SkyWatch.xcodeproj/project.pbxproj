@@ -14,6 +14,7 @@
 		0967A56D378449C915B3978A /* Geodesy.swift in tests */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
 		0DF79AADD25D474C957F11EB /* TrackedTarget.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
 		115ADD311B08D8897A1B22FC /* RateLimiter.swift in tests */ = {isa = PBXBuildFile; fileRef = 3411E7E1106CFF80C248B329 /* RateLimiter.swift */; };
+		1AE4BBA524C4EC84F86F69E2 /* AeroRouteCache.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 5F172B301BF6680B6FFD5193 /* AeroRouteCache.swift */; };
 		1B2212DB53FAD2FB9D5C6A88 /* TrackedTarget.swift in tests */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
 		1BD38E5D06C272AEE5D749AE /* Settings.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 2BB599019BCAE70AFA876BA9 /* Settings.swift */; };
 		27558E9126DEDCD0C7540E8B /* SkyWatchWidget.swift in widget */ = {isa = PBXBuildFile; fileRef = 19441C894EA6DCA27A6D6133 /* SkyWatchWidget.swift */; };
@@ -90,6 +91,7 @@
 		CE2E5FCABFDD403157A767A8 /* Units.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Units.swift"; sourceTree = "<group>"; };
 		31FCF5F88243B2A6A9E776CA /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		21C466584BDB600CC7BEB701 /* AeroAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AeroAPIClient.swift"; sourceTree = "<group>"; };
+		5F172B301BF6680B6FFD5193 /* AeroRouteCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AeroRouteCache.swift"; sourceTree = "<group>"; };
 		CB105CA869BA1B93F7A813CD /* AirplanesLiveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AirplanesLiveClient.swift"; sourceTree = "<group>"; };
 		BF6F1941D08850296CF23E82 /* FlightAlertPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FlightAlertPresenter.swift"; sourceTree = "<group>"; };
 		BD05DC93E709A67C94E8ED4E /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationService.swift"; sourceTree = "<group>"; };
@@ -175,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				21C466584BDB600CC7BEB701 /* AeroAPIClient.swift */,
+				5F172B301BF6680B6FFD5193 /* AeroRouteCache.swift */,
 				CB105CA869BA1B93F7A813CD /* AirplanesLiveClient.swift */,
 				BF6F1941D08850296CF23E82 /* FlightAlertPresenter.swift */,
 				BD05DC93E709A67C94E8ED4E /* LocationService.swift */,
@@ -305,6 +308,7 @@
 				1BD38E5D06C272AEE5D749AE /* Settings.swift in Sources */,
 				68528684BC448C4FF21C99D4 /* Units.swift in Sources */,
 				2AB8490B32487068971BD1DB /* AeroAPIClient.swift in Sources */,
+				1AE4BBA524C4EC84F86F69E2 /* AeroRouteCache.swift in Sources */,
 				5ED3B198BF6F979EFBFDB2F0 /* AirplanesLiveClient.swift in Sources */,
 				3136E2D3D3F7B5B1FE2A13B7 /* FlightAlertPresenter.swift in Sources */,
 				295036F6379D4DA3E1273F37 /* LocationService.swift in Sources */,

@@ -9,6 +9,13 @@ struct Airport: Identifiable, Hashable, Sendable {
 
     var id: String { iata }
 
+    /// Looks up an airport by IATA code, case-insensitively. Used to
+    /// auto-detect the arrival airport from FlightAware's destination code.
+    static func find(iata code: String) -> Airport? {
+        let key = code.uppercased()
+        return common.first { $0.iata == key }
+    }
+
     /// A short pickup-oriented list of major airports, ordered roughly by
     /// relevance to the app's likely users. Coordinates are runway-reference
     /// points; great-circle error of a few NM is irrelevant at ETA scale.

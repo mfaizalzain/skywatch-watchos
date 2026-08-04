@@ -10,6 +10,10 @@ struct AircraftDetailView: View {
 
     @Environment(ScanStore.self) private var store
     @State private var refreshedAircraft: Aircraft?
+    /// Origin → destination from the cached AeroAPI lookup (nil until known,
+    /// or when the build has no key).
+    @State private var route: String?
+    @State private var routeLoaded = false
 
     private var settings: SettingsStore { store.settings }
 
@@ -29,6 +33,7 @@ struct AircraftDetailView: View {
                     header(aircraft)
                     map(target)
                     identity(aircraft)
+                    routeSection
                     position(target, aircraft)
                     motion(aircraft)
                     status(aircraft)
@@ -51,6 +56,17 @@ struct AircraftDetailView: View {
         }
         .task(id: hex) {
             await pollDetail()
+        }
+        .task(id: aircraft?.callsign) {
+            // Load the route once per callsign: the cache makes repeat views
+            // free, and the metered AeroAPI query happens at most hourly.
+            guard let callsign = aircraft?.callsign else {
+                route = nil
+                routeLoaded = true
+                return
+            }
+            route = await AeroRouteCache.shared.route(forCallsign: callsign)
+            routeLoaded = true
         }
     }
 
@@ -136,6 +152,21 @@ struct AircraftDetailView: View {
             if aircraft.flags.contains(.ladd) {
                 DetailRow("Privacy", "LADD", tint: Palette.cautionAmber)
             }
+        }
+    }
+
+    /// Origin → destination from FlightAware (cached, metered). Only appears
+    /// when the build has an AeroAPI key and the lookup succeeds.
+    @ViewBuilder
+    private var routeSection: some View {
+        if routeLoaded {
+            if let route {
+                DetailSection("Route") {
+                    DetailRow("Route", route, tint: Palette.dataCyan)
+                }
+            }
+            // Loaded but no route: no key in the build, unknown flight, or a
+            // flight with no origin/destination — nothing to show.
         }
     }
 
