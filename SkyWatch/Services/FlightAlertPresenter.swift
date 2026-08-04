@@ -10,11 +10,12 @@ import UserNotifications
 /// and never vibrate. This delegate re-enables banner + sound (vibration)
 /// delivery for exactly that case.
 ///
-/// Main-actor isolated: the notification centre's delegate is installed and
-/// called on the main actor, and under Swift 6 an unisolated static singleton
-/// of a non-Sendable NSObject would be flagged as unsafe shared state.
-@MainActor
-final class FlightAlertPresenter: NSObject, UNUserNotificationCenterDelegate {
+/// `@unchecked Sendable`: the type holds no mutable state — it is a pure
+/// delegate — so sharing the singleton across actors is safe by construction,
+/// and the notification centre calls the protocol methods on whatever queue
+/// it chooses. (Isolating the class to the main actor instead trips the
+/// compiler's non-Sendable parameter check on the protocol requirements.)
+final class FlightAlertPresenter: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
     static let shared = FlightAlertPresenter()
 
     private override init() {
