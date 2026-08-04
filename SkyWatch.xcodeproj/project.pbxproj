@@ -22,6 +22,7 @@
 		2B3CF2B1CA294E95D51F4A49 /* AeroFlight.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 56BAD99CAA3A0FD55C6B8D1F /* AeroFlight.swift */; };
 		2F650B29562A78562CAC19B2 /* ScopeGeometry.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 67D893774DA7DCE074FD16D7 /* ScopeGeometry.swift */; };
 		30C126679CBD9B2FFA4095CE /* FlightTrackTests.swift in tests */ = {isa = PBXBuildFile; fileRef = D21670697EA60BAB9DF7D19C /* FlightTrackTests.swift */; };
+		3136E2D3D3F7B5B1FE2A13B7 /* FlightAlertPresenter.swift in watchapp */ = {isa = PBXBuildFile; fileRef = BF6F1941D08850296CF23E82 /* FlightAlertPresenter.swift */; };
 		3216ABCA4DAB8DA319E111DB /* RadarView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 33948CB9D81D8480EA634CF4 /* RadarView.swift */; };
 		3394C2C11DAC817B22249A28 /* Aircraft.swift in widget */ = {isa = PBXBuildFile; fileRef = 7BD55B7E9E21223542B9D228 /* Aircraft.swift */; };
 		341A55CD7C483C8256D22DD0 /* Aircraft.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 7BD55B7E9E21223542B9D228 /* Aircraft.swift */; };
@@ -90,6 +91,7 @@
 		31FCF5F88243B2A6A9E776CA /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		21C466584BDB600CC7BEB701 /* AeroAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AeroAPIClient.swift"; sourceTree = "<group>"; };
 		CB105CA869BA1B93F7A813CD /* AirplanesLiveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AirplanesLiveClient.swift"; sourceTree = "<group>"; };
+		BF6F1941D08850296CF23E82 /* FlightAlertPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FlightAlertPresenter.swift"; sourceTree = "<group>"; };
 		BD05DC93E709A67C94E8ED4E /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationService.swift"; sourceTree = "<group>"; };
 		3411E7E1106CFF80C248B329 /* RateLimiter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RateLimiter.swift"; sourceTree = "<group>"; };
 		BD55AED8D9196D79F177F2E9 /* SharedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SharedStore.swift"; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 			children = (
 				21C466584BDB600CC7BEB701 /* AeroAPIClient.swift */,
 				CB105CA869BA1B93F7A813CD /* AirplanesLiveClient.swift */,
+				BF6F1941D08850296CF23E82 /* FlightAlertPresenter.swift */,
 				BD05DC93E709A67C94E8ED4E /* LocationService.swift */,
 				3411E7E1106CFF80C248B329 /* RateLimiter.swift */,
 				BD55AED8D9196D79F177F2E9 /* SharedStore.swift */,
@@ -303,6 +306,7 @@
 				68528684BC448C4FF21C99D4 /* Units.swift in Sources */,
 				2AB8490B32487068971BD1DB /* AeroAPIClient.swift in Sources */,
 				5ED3B198BF6F979EFBFDB2F0 /* AirplanesLiveClient.swift in Sources */,
+				3136E2D3D3F7B5B1FE2A13B7 /* FlightAlertPresenter.swift in Sources */,
 				295036F6379D4DA3E1273F37 /* LocationService.swift in Sources */,
 				C58B5B8B0DBAE1A65C663A25 /* RateLimiter.swift in Sources */,
 				A8417ADCD4EDE98E70C06F53 /* SharedStore.swift in Sources */,

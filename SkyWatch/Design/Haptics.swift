@@ -18,4 +18,16 @@ enum Haptics {
     static func selectionChanged() {
         WKInterfaceDevice.current().play(.directionUp)
     }
+
+    /// The tracked flight has landed — the alert you are actually waiting for.
+    /// Stronger than the 30/15 ones so it cuts through even on wrist-down.
+    static func flightLanded() {
+        WKInterfaceDevice.current().play(.notification)
+    }
+
+    /// A 30/15-minute milestone: a short, polite tap that won't get annoying
+    /// across a two-hour wait.
+    static func flightMilestone() {
+        WKInterfaceDevice.current().play(.click)
+    }
 }

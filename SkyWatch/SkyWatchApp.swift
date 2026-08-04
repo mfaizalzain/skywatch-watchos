@@ -10,6 +10,12 @@ struct SkyWatchApp: App {
     @State private var store = ScanStore()
     @State private var flightStore = FlightTrackStore()
 
+    init() {
+        // Without this, flight alerts are suppressed while the app is on
+        // screen — the exact moment someone is waiting at the airport.
+        UNUserNotificationCenter.current().delegate = FlightAlertPresenter.shared
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

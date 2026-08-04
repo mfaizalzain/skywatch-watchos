@@ -165,7 +165,8 @@ struct AeroFlightPickerTests {
     func tracksMorningArrival() {
         let now = ISO8601DateFormatter().date(from: "2026-08-04T12:00:00Z")!
         let response = AeroFlightResponse(flights: [
-            makeFlight(status: "Arrived / Gate Arrival", scheduledOut: "2026-08-04T06:00:00Z"),
+            makeFlight(status: "Arrived / Gate Arrival", scheduledOut: "2026-08-04T06:00:00Z",
+                       actualIn: "2026-08-04T08:10:00Z"),
             makeFlight(status: "Scheduled", scheduledOut: "2026-08-05T22:15:00Z")
         ])
         let picked = AeroFlightPicker.pick(from: response, now: now)

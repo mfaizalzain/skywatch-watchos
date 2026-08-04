@@ -253,6 +253,15 @@ final class FlightTrackStore {
         if case let .inAir(etaMinutes) = phase { eta = etaMinutes } else { eta = nil }
         guard let alert = alertState.update(etaMinutes: eta, isLanded: isLanded) else { return }
         guard let flightNumber else { return }
+        // Vibrate immediately — the landed buzz matters even if the user has
+        // notification sounds muted, and a strong haptic cuts through on
+        // wrist-down. The notification itself follows for a persistent alert.
+        switch alert {
+        case .landed:
+            Haptics.flightLanded()
+        case .thirtyMinutes, .fifteenMinutes:
+            Haptics.flightMilestone()
+        }
         Task { await notifier.fire(alert, flight: flightNumber.callsign) }
     }
 
