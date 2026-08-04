@@ -9,6 +9,11 @@ import UserNotifications
 /// the 30/15/landed alerts would silently vanish into the notification centre
 /// and never vibrate. This delegate re-enables banner + sound (vibration)
 /// delivery for exactly that case.
+///
+/// Main-actor isolated: the notification centre's delegate is installed and
+/// called on the main actor, and under Swift 6 an unisolated static singleton
+/// of a non-Sendable NSObject would be flagged as unsafe shared state.
+@MainActor
 final class FlightAlertPresenter: NSObject, UNUserNotificationCenterDelegate {
     static let shared = FlightAlertPresenter()
 
