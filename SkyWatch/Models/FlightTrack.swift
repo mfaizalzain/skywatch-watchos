@@ -7,9 +7,10 @@ import Foundation
 /// Unmapped codes fall back to trying the raw input as a callsign, so an
 /// already-ICAO entry ("MAS123") works even without a mapping.
 enum AirlineCodes {
-    /// Pairs are folded with `uniquingKeysWith` — a duplicated IATA key is a
-    /// maintenance slip, not a crash (a literal duplicate key is a fatal error).
-    static let iataToIcao: [String: String] = Dictionary([
+    /// NOTE: dictionary literals with duplicate keys are a FATAL runtime error
+    /// in Swift (Swift/Dictionary.swift:840). Keep every IATA key unique —
+    /// the regional groups below intentionally do not repeat an airline.
+    static let iataToIcao: [String: String] = [
         // Malaysia / Singapore region
         "MH": "MAS", "SQ": "SIA", "AK": "AXM", "QZ": "QZR", "TR": "TGW",
         "FY": "FMY", "OD": "MXD", "BI": "RBA", "GA": "GIA", "ID": "BTK",
@@ -44,7 +45,7 @@ enum AirlineCodes {
         "WN": "SWA", "AC": "ACA", "WS": "WJA", "TS": "TSC", "AM": "AMX",
         "AV": "AVA", "LA": "LAN", "CM": "CMP", "AR": "ARG", "G3": "GLO",
         "JJ": "TAM", "HA": "HAL",
-    ], uniquingKeysWith: { first, _ in first })
+    ]
 
     /// The ICAO prefix for an IATA code, if mapped.
     static func icao(forIATA iata: String) -> String? {
