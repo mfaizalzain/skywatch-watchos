@@ -7,7 +7,9 @@ import Foundation
 /// Unmapped codes fall back to trying the raw input as a callsign, so an
 /// already-ICAO entry ("MAS123") works even without a mapping.
 enum AirlineCodes {
-    static let iataToIcao: [String: String] = [
+    /// Pairs are folded with `uniquingKeysWith` — a duplicated IATA key is a
+    /// maintenance slip, not a crash (a literal duplicate key is a fatal error).
+    static let iataToIcao: [String: String] = Dictionary([
         // Malaysia / Singapore region
         "MH": "MAS", "SQ": "SIA", "AK": "AXM", "QZ": "QZR", "TR": "TGW",
         "FY": "FMY", "OD": "MXD", "BI": "RBA", "GA": "GIA", "ID": "BTK",
@@ -21,19 +23,19 @@ enum AirlineCodes {
         "KE": "KAL", "OZ": "AAR", "7C": "JJA", "ZE": "ESR", "CA": "CCA",
         "MU": "CES", "CZ": "CSN", "HU": "CHH", "MF": "CXA", "3U": "CSC",
         "HO": "DKH", "9C": "CQH", "SC": "CDG", "ZH": "CSZ", "CI": "CAL",
-        "BR": "EVA", "AE": "MDA", "B7": "UIA", "CX": "CPA", "KA": "HDA",
+        "BR": "EVA", "AE": "MDA", "B7": "UIA",
         // Indian subcontinent
         "AI": "AIC", "6E": "IGO", "UK": "VTI", "SG": "SEJ", "9W": "JAI",
-        "G8": "IGO", "PK": "PIA", "TG": "THA", "UL": "ALK", "AK": "AXM",
+        "G8": "IGO", "PK": "PIA", "UL": "ALK",
         // Middle East
-        "EY": "ETD", "EK": "UAE", "QR": "QTR", "GF": "GFA", "KU": "KAC",
-        "SV": "SVA", "TK": "THY", "RJ": "RJA", "ME": "MEA", "WY": "OMA",
+        "GF": "GFA", "KU": "KAC", "SV": "SVA", "TK": "THY", "RJ": "RJA",
+        "ME": "MEA", "WY": "OMA",
         // Europe
         "BA": "BAW", "VS": "VIR", "LH": "DLH", "LX": "SWR", "OS": "AUA",
         "AF": "AFR", "KL": "KLM", "IB": "IBE", "AZ": "AZA", "TP": "TAP",
         "SK": "SAS", "AY": "FIN", "DY": "NAX", "D8": "IBK", "FR": "RYR",
         "U2": "EZY", "BE": "BEE", "SN": "BEL", "A3": "AEE", "OU": "CTN",
-        "LO": "LOT", "OK": "CSA", "BT": "BTI", "LH": "DLH", "SU": "AFL",
+        "LO": "LOT", "OK": "CSA", "BT": "BTI", "SU": "AFL",
         "PS": "AUI", "RO": "ROT", "EI": "EIN", "EW": "EWG", "AB": "BER",
         // Oceania
         "QF": "QFA", "VA": "VOZ", "JQ": "JST", "NZ": "ANZ", "FJ": "FJI",
@@ -41,8 +43,8 @@ enum AirlineCodes {
         "AA": "AAL", "UA": "UAL", "DL": "DAL", "AS": "ASA", "B6": "JBU",
         "WN": "SWA", "AC": "ACA", "WS": "WJA", "TS": "TSC", "AM": "AMX",
         "AV": "AVA", "LA": "LAN", "CM": "CMP", "AR": "ARG", "G3": "GLO",
-        "JJ": "TAM", "HA": "HAL", "NH": "ANA", "CX": "CPA",
-    ]
+        "JJ": "TAM", "HA": "HAL",
+    ], uniquingKeysWith: { first, _ in first })
 
     /// The ICAO prefix for an IATA code, if mapped.
     static func icao(forIATA iata: String) -> String? {
