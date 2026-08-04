@@ -3,8 +3,9 @@
 A standalone Apple Watch scanner for aircraft flying near you, built on the free
 [airplanes.live](https://airplanes.live) ADS-B API.
 
-No iPhone app, no `WatchConnectivity`, no third-party dependencies, no API key, no analytics. The
-watch talks to exactly one host — `api.airplanes.live` — and nothing else.
+No iPhone app, no `WatchConnectivity`, no third-party dependencies, no analytics. The watch talks
+to exactly two hosts — `api.airplanes.live` (live ADS-B, no key) and, only when you opt in with a
+FlightAware AeroAPI key, `aeroapi.flightaware.com` (official flight status) — and nothing else.
 
 Built for personal sideloading. It is not intended for the App Store.
 
@@ -24,6 +25,10 @@ Built for personal sideloading. It is not intended for the App Store.
   live ETA countdown to landing with watch notifications at **30 min**, **15 min**, and **on the
   ground** — built for meeting someone at the gate. A green **● LIVE** badge shows the flight is
   transmitting a position right now; ETA comes from the aircraft's live position and ground speed.
+  Alerts vibrate the watch (a strong buzz on landing), and when a FlightAware AeroAPI key is
+  injected at build time, the screen also shows the airline's *official* status, terminal, gate
+  and estimated arrival — and the landed alert is triggered by the airline's own status rather
+  than inferred from the ADS-B feed.
 - **Settings** — radius, refresh interval, units, heading-up vs north-up, filters, proximity haptic.
 - **Complication** — a Smart Stack widget with the count in range and the nearest aircraft.
 
@@ -97,7 +102,11 @@ heading filter's 359° → 0° wrap, rate-limiter spacing under concurrent calle
 lifecycle from first appearance to being dropped after two missed cycles, and flight tracking —
 flight-number parsing (IATA → ICAO callsign conversion, normalisation, garbage rejection), ETA
 math, the one-shot 30/15/landed alert state machine, live/not-live phase logic, landed-after-
-disappearance detection, and airport-catalog sanity (unique IATA codes, valid coordinates).
+disappearance detection, airport-catalog sanity (unique IATA codes, valid coordinates), and the
+AeroAPI layer — decoding a real FlightAware response (ISO8601 dates, gate/runway times, terminal
+and gate), status-summary parsing ("Arrived / Gate Arrival" → arrived), landed detection, and the
+occurrence picker (an en-route flight beats tonight's scheduled one, which beats tomorrow's; a
+flight that landed this morning is still picked so the pickup alert fires).
 
 The rate-limiter tests wait on a real clock, so the suite takes roughly ten seconds.
 
@@ -129,24 +138,60 @@ request per second.
 **Battery.** Polling only runs while the scene is active, backs off to 60 s when the display is
 luminance-reduced, and the compass runs only while the radar is on screen. Location accuracy is set
 to 100 m with a 250 m distance filter — far more than a 20 nm radius needs. Flight tracking polls
-the callsign endpoint on the same scene-gated cadence (30 s, 60 s wrist-down); the alerts are local
-notifications fired by the watch itself, so there is no background work and no server.
+the callsign endpoint on the same scene-gated cadence (30 s, 60 s wrist-down); the AeroAPI status
+layer is metered and polls at a fifth of that (every 5 minutes, ≈ 12 queries/hour ≈ $0.06 inside
+the feeder's $10/month Personal allowance). The alerts are local notifications fired by the watch
+itself — no server, no background execution.
 
-**Landing detection is inference, not a status feed.** The ADS-B API has no "landed" field — the
-app infers it: the transponder reports `ground` near the arrival airport, or a tracked flight
-powers down and leaves the feed. ETA is great-circle distance over current ground speed, so it is
-honest about being an estimate. A flight that is "not in the feed" may simply not have departed
-yet, or may be out of coverage — the UI says so rather than guessing.
+**Landing detection is layered.** The ADS-B feed has no "landed" field, so the app infers it: the
+transponder reports `ground` near the arrival airport, or a tracked flight powers down and leaves
+the feed. When a FlightAware AeroAPI key is in the build, the airline's own status
+(Scheduled / En Route / Landed / Arrived / Cancelled / Diverted) overrides the inference — a flight
+that has officially arrived triggers the landed alert even after its transponder has gone quiet,
+and the screen shows terminal, gate and estimated arrival. ETA stays a great-circle-distance-over-
+ground-speed estimate, and a flight that is "not in the feed" may simply not have departed yet or
+be out of coverage — the UI says so rather than guessing.
+
+**Flight alerts always vibrate.** watchOS, like iOS, suppresses a scheduled notification while the
+app that owns it is foreground — which would be exactly when a picker-up is watching the Track
+screen. `FlightAlertPresenter` re-enables banner + sound delivery in the foreground (sound *is*
+the haptic engine on a watch), and each milestone also plays a direct `WKInterfaceDevice` haptic
+at fire time: a strong `.notification` buzz on landing, a polite `.click` for the 30/15-minutes
+heads-up. So the watch vibrates even if the user has notification sounds muted or is wrist-down.
 
 ## Deliberately not included
 
 - **Background location.** The app scans while you are looking at it, and not otherwise.
 - **Push notifications.** They would need a server polling the API for you. The on-device proximity
   haptic covers the same need while the app is open, and flight tracking fires *local*
-  notifications (30 / 15 / landed) from the watch itself while the Track tab is active — no server,
-  no background execution. A flight that lands while the app is closed will not notify; the alerts
-  are for waiting at the airport with the screen on, not a background watch service.
+  notifications (30 / 15 / landed, with vibration) from the watch itself while the Track tab is
+  active — no server, no background execution. A flight that lands while the app is closed will
+  not notify; the alerts are for waiting at the airport with the screen on, not a background
+  watch service.
 - **CloudKit.** Settings are a handful of values in an App Group.
+
+## FlightAware AeroAPI (optional)
+
+The Track tab's *official* status layer (airline status, terminal, gate, estimated arrival, and
+the authoritative landed trigger) is disabled by default: it needs a FlightAware AeroAPI key, and
+the key is intentionally **not** in the repository.
+
+To enable it:
+
+1. Sign up for AeroAPI at [flightaware.com/aeroapi](https://www.flightaware.com/aeroapi) — the
+   free **Personal** tier charges per query (≈ $0.005 for `flights/{ident}`) against a $5/month
+   allowance, **doubled to $10/month for ADS-B feeders** (PiAware/FlightFeeder accounts get
+   Enterprise status plus the doubled allowance automatically). A 2-hour pickup session polls
+   once per 5 minutes: about 24 queries, $0.12.
+2. The app reads the key from the `AEROAPI_KEY` build setting into its `AeroAPIKey` Info.plist
+   entry. For a personal build, pass it to `xcodebuild`:
+   `xcodebuild … AEROAPI_KEY="your-key"`. The release workflow does this from the
+   `AEROAPI_KEY` GitHub Actions secret — add the secret and dispatch.
+3. Without a key the app behaves exactly as before: live ETA and inferred landing from ADS-B
+   only, no FlightAware branding anywhere.
+
+The AeroAPI client is rate-limited independently (7 s spacing, comfortably under the Personal
+tier's 10 result sets/minute) and shares nothing with the airplanes.live limiter.
 
 ## Complication expectations
 
