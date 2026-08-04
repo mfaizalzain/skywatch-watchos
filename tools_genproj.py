@@ -3,6 +3,12 @@
 
 Kept in the repo so the project file can be regenerated rather than hand-patched if it ever
 gets mangled.
+
+Target layout (Xcode 26 watch-only template shape): a hidden iOS CONTAINER target
+(com.apple.product-type.application.watchapp2-container) takes the top-level bundle id
+(com.fmz.skywatch) and embeds the watch app (com.fmz.skywatch.watchkitapp) plus its widget.
+Archiving the CONTAINER is what makes a watch-only app App-Store-distributable — a bare
+single-target watchOS archive only offers Ad Hoc/Enterprise export.
 """
 import hashlib
 import os
@@ -89,7 +95,8 @@ all_paths = sorted(set(APP_SOURCES + WIDGET_OWN + TEST_OWN + APP_RESOURCES + WID
 file_ref = {path: oid("fileref", path) for path in all_paths}
 
 products = {
-    "app": oid("product", "app"),
+    "container": oid("product", "container"),
+    "watchapp": oid("product", "watchapp"),
     "widget": oid("product", "widget"),
     "tests": oid("product", "tests"),
 }
@@ -110,7 +117,11 @@ def file_reference_section():
         )
     w(
         '\t\t%s /* SkyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };'
-        % products["app"]
+        % products["container"]
+    )
+    w(
+        '\t\t%s /* SkyWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SkyWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };'
+        % products["watchapp"]
     )
     w(
         '\t\t%s /* SkyWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SkyWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };'
@@ -134,11 +145,12 @@ def register_build_files(target, paths):
         build_file[(target, path)] = oid("buildfile", target, path)
 
 
-register_build_files("app", APP_SOURCES + APP_RESOURCES)
+register_build_files("watchapp", APP_SOURCES + APP_RESOURCES)
 register_build_files("widget", WIDGET_OWN + WIDGET_SHARED + WIDGET_RESOURCES)
 register_build_files("tests", TEST_OWN + TEST_SHARED)
 
 embed_widget_bf = oid("buildfile", "embed", "widget")
+embed_watchapp_bf = oid("buildfile", "embed", "watchapp")
 
 
 def build_file_section():
@@ -151,6 +163,10 @@ def build_file_section():
     w(
         "\t\t%s /* SkyWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = %s /* SkyWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };"
         % (embed_widget_bf, products["widget"])
+    )
+    w(
+        "\t\t%s /* SkyWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = %s /* SkyWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };"
+        % (embed_watchapp_bf, products["watchapp"])
     )
     w("/* End PBXBuildFile section */")
     w("")
@@ -198,7 +214,8 @@ group_records.append(
         products_group,
         "Products",
         [
-            (products["app"], "SkyWatch.app"),
+            (products["container"], "SkyWatch.app"),
+            (products["watchapp"], "SkyWatch Watch App.app"),
             (products["widget"], "SkyWatchWidget.appex"),
             (products["tests"], "SkyWatchTests.xctest"),
         ],
@@ -242,10 +259,11 @@ def group_section():
 # ---------------------------------------------------------------- phases
 
 phases = {
-    "app_sources": oid("phase", "app", "sources"),
-    "app_resources": oid("phase", "app", "resources"),
-    "app_frameworks": oid("phase", "app", "frameworks"),
-    "app_embed": oid("phase", "app", "embed"),
+    "container_embed": oid("phase", "container", "embed"),
+    "watchapp_sources": oid("phase", "watchapp", "sources"),
+    "watchapp_resources": oid("phase", "watchapp", "resources"),
+    "watchapp_frameworks": oid("phase", "watchapp", "frameworks"),
+    "watchapp_embed": oid("phase", "watchapp", "embed"),
     "widget_sources": oid("phase", "widget", "sources"),
     "widget_resources": oid("phase", "widget", "resources"),
     "widget_frameworks": oid("phase", "widget", "frameworks"),
@@ -290,27 +308,38 @@ def frameworks_phase(ident):
 
 def phase_sections():
     w("/* Begin PBXSourcesBuildPhase section */")
-    sources_phase(phases["app_sources"], "app", APP_SOURCES)
+    sources_phase(phases["watchapp_sources"], "watchapp", APP_SOURCES)
     sources_phase(phases["widget_sources"], "widget", WIDGET_OWN + WIDGET_SHARED)
     sources_phase(phases["tests_sources"], "tests", TEST_OWN + TEST_SHARED)
     w("/* End PBXSourcesBuildPhase section */")
     w("")
 
     w("/* Begin PBXResourcesBuildPhase section */")
-    resources_phase(phases["app_resources"], "app", APP_RESOURCES)
+    resources_phase(phases["watchapp_resources"], "watchapp", APP_RESOURCES)
     resources_phase(phases["widget_resources"], "widget", WIDGET_RESOURCES)
     w("/* End PBXResourcesBuildPhase section */")
     w("")
 
     w("/* Begin PBXFrameworksBuildPhase section */")
-    frameworks_phase(phases["app_frameworks"])
+    frameworks_phase(phases["watchapp_frameworks"])
     frameworks_phase(phases["widget_frameworks"])
     frameworks_phase(phases["tests_frameworks"])
     w("/* End PBXFrameworksBuildPhase section */")
     w("")
 
     w("/* Begin PBXCopyFilesBuildPhase section */")
-    w("\t\t%s /* Embed Foundation Extensions */ = {" % phases["app_embed"])
+    w("\t\t%s /* Embed Watch Content */ = {" % phases["container_embed"])
+    w("\t\t\tisa = PBXCopyFilesBuildPhase;")
+    w("\t\t\tbuildActionMask = 2147483647;")
+    w('\t\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";')
+    w("\t\t\tdstSubfolderSpec = 16;")
+    w("\t\t\tfiles = (")
+    w("\t\t\t\t%s /* SkyWatch Watch App.app in Embed Watch Content */," % embed_watchapp_bf)
+    w("\t\t\t);")
+    w('\t\t\tname = "Embed Watch Content";')
+    w("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
+    w("\t\t};")
+    w("\t\t%s /* Embed Foundation Extensions */ = {" % phases["watchapp_embed"])
     w("\t\t\tisa = PBXCopyFilesBuildPhase;")
     w("\t\t\tbuildActionMask = 2147483647;")
     w('\t\t\tdstPath = "";')
@@ -328,23 +357,27 @@ def phase_sections():
 # ---------------------------------------------------------------- targets
 
 targets = {
-    "app": oid("target", "app"),
+    "container": oid("target", "container"),
+    "watchapp": oid("target", "watchapp"),
     "widget": oid("target", "widget"),
     "tests": oid("target", "tests"),
 }
 project_id = oid("project")
-dependency_id = oid("dependency", "widget")
-container_proxy_id = oid("containerproxy", "widget")
+container_dependency_id = oid("dependency", "container", "watchapp")
+watchapp_dependency_id = oid("dependency", "watchapp", "widget")
+container_proxy_id = oid("containerproxy", "container", "watchapp")
+watchapp_proxy_id = oid("containerproxy", "watchapp", "widget")
 
 config_lists = {
     "project": oid("configlist", "project"),
-    "app": oid("configlist", "app"),
+    "container": oid("configlist", "container"),
+    "watchapp": oid("configlist", "watchapp"),
     "widget": oid("configlist", "widget"),
     "tests": oid("configlist", "tests"),
 }
 configs = {
     (scope, name): oid("config", scope, name)
-    for scope in ("project", "app", "widget", "tests")
+    for scope in ("project", "container", "watchapp", "widget", "tests")
     for name in ("Debug", "Release")
 }
 
@@ -352,23 +385,42 @@ configs = {
 def target_section():
     w("/* Begin PBXNativeTarget section */")
 
-    w("\t\t%s /* SkyWatch */ = {" % targets["app"])
+    # iOS stub container: takes the top-level bundle id, embeds the watch app.
+    w("\t\t%s /* SkyWatch */ = {" % targets["container"])
     w("\t\t\tisa = PBXNativeTarget;")
-    w('\t\t\tbuildConfigurationList = %s /* Build configuration list for PBXNativeTarget "SkyWatch" */;' % config_lists["app"])
+    w('\t\t\tbuildConfigurationList = %s /* Build configuration list for PBXNativeTarget "SkyWatch" */;' % config_lists["container"])
     w("\t\t\tbuildPhases = (")
-    w("\t\t\t\t%s /* Sources */," % phases["app_sources"])
-    w("\t\t\t\t%s /* Frameworks */," % phases["app_frameworks"])
-    w("\t\t\t\t%s /* Resources */," % phases["app_resources"])
-    w("\t\t\t\t%s /* Embed Foundation Extensions */," % phases["app_embed"])
+    w("\t\t\t\t%s /* Embed Watch Content */," % phases["container_embed"])
     w("\t\t\t);")
     w("\t\t\tbuildRules = (")
     w("\t\t\t);")
     w("\t\t\tdependencies = (")
-    w("\t\t\t\t%s /* PBXTargetDependency */," % dependency_id)
+    w("\t\t\t\t%s /* PBXTargetDependency */," % container_dependency_id)
     w("\t\t\t);")
     w("\t\t\tname = SkyWatch;")
     w("\t\t\tproductName = SkyWatch;")
-    w("\t\t\tproductReference = %s /* SkyWatch.app */;" % products["app"])
+    w("\t\t\tproductReference = %s /* SkyWatch.app */;" % products["container"])
+    w('\t\t\tproductType = "com.apple.product-type.application.watchapp2-container";')
+    w("\t\t};")
+
+    # The actual watch app, embedded in the container, bundle id .watchkitapp.
+    w("\t\t%s /* SkyWatch Watch App */ = {" % targets["watchapp"])
+    w("\t\t\tisa = PBXNativeTarget;")
+    w('\t\t\tbuildConfigurationList = %s /* Build configuration list for PBXNativeTarget "SkyWatch Watch App" */;' % config_lists["watchapp"])
+    w("\t\t\tbuildPhases = (")
+    w("\t\t\t\t%s /* Sources */," % phases["watchapp_sources"])
+    w("\t\t\t\t%s /* Frameworks */," % phases["watchapp_frameworks"])
+    w("\t\t\t\t%s /* Resources */," % phases["watchapp_resources"])
+    w("\t\t\t\t%s /* Embed Foundation Extensions */," % phases["watchapp_embed"])
+    w("\t\t\t);")
+    w("\t\t\tbuildRules = (")
+    w("\t\t\t);")
+    w("\t\t\tdependencies = (")
+    w("\t\t\t\t%s /* PBXTargetDependency */," % watchapp_dependency_id)
+    w("\t\t\t);")
+    w("\t\t\tname = \"SkyWatch Watch App\";")
+    w("\t\t\tproductName = \"SkyWatch Watch App\";")
+    w("\t\t\tproductReference = %s /* SkyWatch Watch App.app */;" % products["watchapp"])
     w('\t\t\tproductType = "com.apple.product-type.application";')
     w("\t\t};")
 
@@ -411,16 +463,28 @@ def target_section():
     w("")
 
     w("/* Begin PBXTargetDependency section */")
-    w("\t\t%s /* PBXTargetDependency */ = {" % dependency_id)
+    w("\t\t%s /* PBXTargetDependency */ = {" % container_dependency_id)
+    w("\t\t\tisa = PBXTargetDependency;")
+    w("\t\t\ttarget = %s /* SkyWatch Watch App */;" % targets["watchapp"])
+    w("\t\t\ttargetProxy = %s /* PBXContainerItemProxy */;" % container_proxy_id)
+    w("\t\t};")
+    w("\t\t%s /* PBXTargetDependency */ = {" % watchapp_dependency_id)
     w("\t\t\tisa = PBXTargetDependency;")
     w("\t\t\ttarget = %s /* SkyWatchWidget */;" % targets["widget"])
-    w("\t\t\ttargetProxy = %s /* PBXContainerItemProxy */;" % container_proxy_id)
+    w("\t\t\ttargetProxy = %s /* PBXContainerItemProxy */;" % watchapp_proxy_id)
     w("\t\t};")
     w("/* End PBXTargetDependency section */")
     w("")
 
     w("/* Begin PBXContainerItemProxy section */")
     w("\t\t%s /* PBXContainerItemProxy */ = {" % container_proxy_id)
+    w("\t\t\tisa = PBXContainerItemProxy;")
+    w("\t\t\tcontainerPortal = %s /* Project object */;" % project_id)
+    w("\t\t\tproxyType = 1;")
+    w("\t\t\tremoteGlobalIDString = %s;" % targets["watchapp"])
+    w("\t\t\tremoteInfo = \"SkyWatch Watch App\";")
+    w("\t\t};")
+    w("\t\t%s /* PBXContainerItemProxy */ = {" % watchapp_proxy_id)
     w("\t\t\tisa = PBXContainerItemProxy;")
     w("\t\t\tcontainerPortal = %s /* Project object */;" % project_id)
     w("\t\t\tproxyType = 1;")
@@ -440,7 +504,7 @@ def project_section():
     w("\t\t\t\tLastSwiftUpdateCheck = 2600;")
     w("\t\t\t\tLastUpgradeCheck = 2600;")
     w("\t\t\t\tTargetAttributes = {")
-    for key in ("app", "widget", "tests"):
+    for key in ("container", "watchapp", "widget", "tests"):
         w("\t\t\t\t\t%s = {" % targets[key])
         w("\t\t\t\t\t\tCreatedOnToolsVersion = 26.0;")
         w("\t\t\t\t\t};")
@@ -459,7 +523,8 @@ def project_section():
     w('\t\t\tprojectDirPath = "";')
     w('\t\t\tprojectRoot = "";')
     w("\t\t\ttargets = (")
-    w("\t\t\t\t%s /* SkyWatch */," % targets["app"])
+    w("\t\t\t\t%s /* SkyWatch */," % targets["container"])
+    w("\t\t\t\t%s /* SkyWatch Watch App */," % targets["watchapp"])
     w("\t\t\t\t%s /* SkyWatchWidget */," % targets["widget"])
     w("\t\t\t\t%s /* SkyWatchTests */," % targets["tests"])
     w("\t\t\t);")
@@ -503,7 +568,7 @@ DEBUG_ONLY = {
     "ENABLE_TESTABILITY": "YES",
     "GCC_DYNAMIC_NO_PIC": "NO",
     "GCC_OPTIMIZATION_LEVEL": "0",
-    "GCC_PREPROCESSOR_DEFINITIONS": '(\n\t\t\t\t\t"DEBUG=1",\n\t\t\t\t\t"$(inherited)",\n\t\t\t\t)',
+    "GCC_PREPROCESSOR_DEFINITIONS": '(\n\t\t\t\t\t\t"DEBUG=1",\n\t\t\t\t\t\t"$(inherited)",\n\t\t\t\t\t)',
     "MTL_ENABLE_DEBUG_INFO": "INCLUDE_SOURCE",
     "ONLY_ACTIVE_ARCH": "YES",
     "SWIFT_ACTIVE_COMPILATION_CONDITIONS": '"DEBUG $(inherited)"',
@@ -519,21 +584,36 @@ RELEASE_ONLY = {
     "VALIDATE_PRODUCT": "YES",
 }
 
-APP_SETTINGS = {
+CONTAINER_SETTINGS = {
+    "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",
+    "CODE_SIGN_STYLE": "Automatic",
+    "CURRENT_PROJECT_VERSION": "1",
+    "GENERATE_INFOPLIST_FILE": "YES",
+    "INFOPLIST_KEY_UILaunchScreen_Generation": "YES",
+    "IPHONEOS_DEPLOYMENT_TARGET": DEPLOYMENT,
+    "MARKETING_VERSION": "1.0",
+    "PRODUCT_BUNDLE_IDENTIFIER": BUNDLE_ROOT,
+    "PRODUCT_NAME": '"$(TARGET_NAME)"',
+    "SDKROOT": "iphoneos",
+    "SWIFT_VERSION": "6.0",
+    "TARGETED_DEVICE_FAMILY": '"1,2"',
+}
+
+WATCHAPP_SETTINGS = {
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
     "CODE_SIGN_ENTITLEMENTS": "SkyWatch/SkyWatch.entitlements",
     "CODE_SIGN_STYLE": "Automatic",
     "CURRENT_PROJECT_VERSION": "1",
-    "DEVELOPMENT_ASSET_PATHS": '"\\"SkyWatch/Preview Content\\""',
+    "DEVELOPMENT_ASSET_PATHS": '\"\\\\\"SkyWatch/Preview Content\\\\\"\"',
     "ENABLE_PREVIEWS": "YES",
     "GENERATE_INFOPLIST_FILE": "NO",
     "INFOPLIST_FILE": "SkyWatch/Info.plist",
     "INFOPLIST_KEY_CFBundleDisplayName": "SkyWatch",
     "MARKETING_VERSION": "1.0",
-    "PRODUCT_BUNDLE_IDENTIFIER": BUNDLE_ROOT,
+    "PRODUCT_BUNDLE_IDENTIFIER": BUNDLE_ROOT + ".watchkitapp",
     "PRODUCT_NAME": '"$(TARGET_NAME)"',
-    "SKIP_INSTALL": "NO",
+    "SKIP_INSTALL": "YES",
     "SWIFT_EMIT_LOC_STRINGS": "YES",
 }
 
@@ -554,16 +634,23 @@ WIDGET_SETTINGS = {
     "SWIFT_EMIT_LOC_STRINGS": "YES",
 }
 
-# Manual signing for Release config only. PROFILE_NAME / PROFILE_NAME_SHAREEXT
-# are exported by the release workflow from the installed provisioning
-# profiles; xcodebuild expands $(...) from the environment. Target-scoped (set
-# here, never on the xcodebuild command line) so the settings don't leak into
-# the widget/tests targets.
-APP_RELEASE_SIGNING = {
+# Manual signing for Release config only. PROFILE_NAME / PROFILE_NAME_WATCHAPP /
+# PROFILE_NAME_SHAREEXT are exported by the release workflow from the installed
+# provisioning profiles; xcodebuild expands $(...) from the environment. Target-scoped
+# (set here, never on the xcodebuild command line) so the settings don't leak into
+# sibling targets.
+CONTAINER_RELEASE_SIGNING = {
     "CODE_SIGN_STYLE": "Manual",
     "CODE_SIGN_IDENTITY": '"Apple Distribution"',
     "DEVELOPMENT_TEAM": "S232V5F699",
     "PROVISIONING_PROFILE_SPECIFIER": '"$(PROFILE_NAME)"',
+}
+
+WATCHAPP_RELEASE_SIGNING = {
+    "CODE_SIGN_STYLE": "Manual",
+    "CODE_SIGN_IDENTITY": '"Apple Distribution"',
+    "DEVELOPMENT_TEAM": "S232V5F699",
+    "PROVISIONING_PROFILE_SPECIFIER": '"$(PROFILE_NAME_WATCHAPP)"',
 }
 
 WIDGET_RELEASE_SIGNING = {
@@ -606,13 +693,16 @@ def config_section():
     emit_config(configs[("project", "Debug")], "Debug", project_debug)
     emit_config(configs[("project", "Release")], "Release", project_release)
 
-    for scope, settings in (("app", APP_SETTINGS), ("widget", WIDGET_SETTINGS), ("tests", TEST_SETTINGS)):
+    for scope, settings, release_signing in (
+        ("container", CONTAINER_SETTINGS, CONTAINER_RELEASE_SIGNING),
+        ("watchapp", WATCHAPP_SETTINGS, WATCHAPP_RELEASE_SIGNING),
+        ("widget", WIDGET_SETTINGS, WIDGET_RELEASE_SIGNING),
+        ("tests", TEST_SETTINGS, None),
+    ):
         emit_config(configs[(scope, "Debug")], "Debug", settings)
         release = dict(settings)
-        if scope == "app":
-            release.update(APP_RELEASE_SIGNING)
-        elif scope == "widget":
-            release.update(WIDGET_RELEASE_SIGNING)
+        if release_signing:
+            release.update(release_signing)
         emit_config(configs[(scope, "Release")], "Release", release)
 
     w("/* End XCBuildConfiguration section */")
@@ -621,7 +711,8 @@ def config_section():
     w("/* Begin XCConfigurationList section */")
     for scope, label in (
         ("project", 'PBXProject "SkyWatch"'),
-        ("app", 'PBXNativeTarget "SkyWatch"'),
+        ("container", 'PBXNativeTarget "SkyWatch"'),
+        ("watchapp", 'PBXNativeTarget "SkyWatch Watch App"'),
         ("widget", 'PBXNativeTarget "SkyWatchWidget"'),
         ("tests", 'PBXNativeTarget "SkyWatchTests"'),
     ):
@@ -677,9 +768,9 @@ scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "{targets['app']}"
-               BuildableName = "SkyWatch.app"
-               BlueprintName = "SkyWatch"
+               BlueprintIdentifier = "{targets['watchapp']}"
+               BuildableName = "SkyWatch Watch App.app"
+               BlueprintName = "SkyWatch Watch App"
                ReferencedContainer = "container:SkyWatch.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -702,7 +793,7 @@ scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
       <BuildableProductRunnable runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "{targets['app']}"
+            BlueprintIdentifier = "{targets['container']}"
             BuildableName = "SkyWatch.app"
             BlueprintName = "SkyWatch"
             ReferencedContainer = "container:SkyWatch.xcodeproj">
@@ -713,7 +804,7 @@ scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
       <BuildableProductRunnable runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "{targets['app']}"
+            BlueprintIdentifier = "{targets['container']}"
             BuildableName = "SkyWatch.app"
             BlueprintName = "SkyWatch"
             ReferencedContainer = "container:SkyWatch.xcodeproj">

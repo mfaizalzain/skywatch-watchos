@@ -5,9 +5,9 @@
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7DD0A2F01353ED35078A4D5C"
-               BuildableName = "SkyWatch.app"
-               BlueprintName = "SkyWatch"
+               BlueprintIdentifier = "D672F4B4EF39D6881C949B3C"
+               BuildableName = "SkyWatch Watch App.app"
+               BlueprintName = "SkyWatch Watch App"
                ReferencedContainer = "container:SkyWatch.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -30,7 +30,7 @@
       <BuildableProductRunnable runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7DD0A2F01353ED35078A4D5C"
+            BlueprintIdentifier = "16E4F0BFD014CFFE4F2D8E22"
             BuildableName = "SkyWatch.app"
             BlueprintName = "SkyWatch"
             ReferencedContainer = "container:SkyWatch.xcodeproj">
@@ -41,7 +41,7 @@
       <BuildableProductRunnable runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7DD0A2F01353ED35078A4D5C"
+            BlueprintIdentifier = "16E4F0BFD014CFFE4F2D8E22"
             BuildableName = "SkyWatch.app"
             BlueprintName = "SkyWatch"
             ReferencedContainer = "container:SkyWatch.xcodeproj">

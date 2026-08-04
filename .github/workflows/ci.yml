@@ -35,10 +35,12 @@ jobs:
 
       - name: Build (watchOS Simulator, unsigned)
         run: |
+          # The scheme's primary buildable is the iOS container (for App Store
+          # distribution); CI builds the watch app itself for the simulator.
           xcodebuild build \
             -project SkyWatch.xcodeproj \
-            -scheme SkyWatch \
-            -destination 'generic/platform=watchOS Simulator' \
+            -target "SkyWatch Watch App" \
+            -sdk watchsimulator \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
 

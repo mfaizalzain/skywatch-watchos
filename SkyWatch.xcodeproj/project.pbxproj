@@ -7,55 +7,56 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00CAEAA66A22792FE285DC5F /* Palette.swift in watchapp */ = {isa = PBXBuildFile; fileRef = A939F413633D6824EE0415F7 /* Palette.swift */; };
+		03E173A985C3F69915C62D68 /* AircraftListView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 33836BF3409EF91C361297AC /* AircraftListView.swift */; };
+		065D6AB8F53DD3C2F9DF70D6 /* Assets.xcassets in watchapp */ = {isa = PBXBuildFile; fileRef = 6310B04D64214F3E183A566E /* Assets.xcassets */; };
 		0967A56D378449C915B3978A /* Geodesy.swift in tests */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
+		0DF79AADD25D474C957F11EB /* TrackedTarget.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
 		115ADD311B08D8897A1B22FC /* RateLimiter.swift in tests */ = {isa = PBXBuildFile; fileRef = 3411E7E1106CFF80C248B329 /* RateLimiter.swift */; };
 		1B2212DB53FAD2FB9D5C6A88 /* TrackedTarget.swift in tests */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
-		1E338E3DB34BF4FCA054E151 /* Badges.swift in app */ = {isa = PBXBuildFile; fileRef = 2CBD0FD19CA092769C2413B0 /* Badges.swift */; };
-		2096AE6A7A60B1E6ADF5DA77 /* Geodesy.swift in app */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
-		245F3667ABBE0B4C66BF9D06 /* ScopeGeometry.swift in app */ = {isa = PBXBuildFile; fileRef = 67D893774DA7DCE074FD16D7 /* ScopeGeometry.swift */; };
+		1BD38E5D06C272AEE5D749AE /* Settings.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 2BB599019BCAE70AFA876BA9 /* Settings.swift */; };
 		27558E9126DEDCD0C7540E8B /* SkyWatchWidget.swift in widget */ = {isa = PBXBuildFile; fileRef = 19441C894EA6DCA27A6D6133 /* SkyWatchWidget.swift */; };
+		295036F6379D4DA3E1273F37 /* LocationService.swift in watchapp */ = {isa = PBXBuildFile; fileRef = BD05DC93E709A67C94E8ED4E /* LocationService.swift */; };
+		2F650B29562A78562CAC19B2 /* ScopeGeometry.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 67D893774DA7DCE074FD16D7 /* ScopeGeometry.swift */; };
+		3216ABCA4DAB8DA319E111DB /* RadarView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 33948CB9D81D8480EA634CF4 /* RadarView.swift */; };
 		3394C2C11DAC817B22249A28 /* Aircraft.swift in widget */ = {isa = PBXBuildFile; fileRef = 7BD55B7E9E21223542B9D228 /* Aircraft.swift */; };
+		341A55CD7C483C8256D22DD0 /* Aircraft.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 7BD55B7E9E21223542B9D228 /* Aircraft.swift */; };
 		3715B38F6E4E9CE75FA866DC /* Units.swift in tests */ = {isa = PBXBuildFile; fileRef = CE2E5FCABFDD403157A767A8 /* Units.swift */; };
-		37B7CC2B8617BB9186194ABA /* FailureStateView.swift in app */ = {isa = PBXBuildFile; fileRef = 7BFE00036930C6A911254B2C /* FailureStateView.swift */; };
-		3AD4BCF8752ABBE75D475759 /* RateLimiter.swift in app */ = {isa = PBXBuildFile; fileRef = 3411E7E1106CFF80C248B329 /* RateLimiter.swift */; };
+		3BDC405302F927E5A8D35F49 /* Palette+Targets.swift in watchapp */ = {isa = PBXBuildFile; fileRef = ECD9542C7CBCC676CBE7F162 /* Palette+Targets.swift */; };
 		3D8FA5BBA517EAA393A93AAA /* MergeTests.swift in tests */ = {isa = PBXBuildFile; fileRef = 775A259280ABE4DC05CADA5F /* MergeTests.swift */; };
+		3DC2B4CA4D2A620A5FDC4C4D /* Typography.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 936B770F7CB201F82397C13A /* Typography.swift */; };
+		3E038C7C2370250728FAFC8C /* AircraftDetailView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 2B210940163CCE68D69E5C0E /* AircraftDetailView.swift */; };
 		494AFCDD5DC73562BA28A0A5 /* DecodingTests.swift in tests */ = {isa = PBXBuildFile; fileRef = 0E1D5DB98E54970A2DCE2354 /* DecodingTests.swift */; };
 		49A9857A09CBB5F05497FA67 /* RateLimiterTests.swift in tests */ = {isa = PBXBuildFile; fileRef = 74D7132F7132E3E2C630BEAC /* RateLimiterTests.swift */; };
-		58C04FDBC4FF80C7EC2B8108 /* Palette.swift in app */ = {isa = PBXBuildFile; fileRef = A939F413633D6824EE0415F7 /* Palette.swift */; };
-		6E90191C8F8FCAB325E2FABE /* Units.swift in app */ = {isa = PBXBuildFile; fileRef = CE2E5FCABFDD403157A767A8 /* Units.swift */; };
+		4BB0CE3F60DE0B87F8482299 /* ScanStore.swift in watchapp */ = {isa = PBXBuildFile; fileRef = A21687414CCE1C08AFF76CA0 /* ScanStore.swift */; };
+		4C31F57329F994C730637874 /* SkyWatchApp.swift in watchapp */ = {isa = PBXBuildFile; fileRef = C7AFD0BDFD60B88AC47CDBBF /* SkyWatchApp.swift */; };
+		53E76F098384BA47EE5C23BA /* Badges.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 2CBD0FD19CA092769C2413B0 /* Badges.swift */; };
+		5ED3B198BF6F979EFBFDB2F0 /* AirplanesLiveClient.swift in watchapp */ = {isa = PBXBuildFile; fileRef = CB105CA869BA1B93F7A813CD /* AirplanesLiveClient.swift */; };
+		63350949D68DFBD8B51BBDBF /* NearestCallout.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 34F361B15166C3445F3FECCD /* NearestCallout.swift */; };
+		68528684BC448C4FF21C99D4 /* Units.swift in watchapp */ = {isa = PBXBuildFile; fileRef = CE2E5FCABFDD403157A767A8 /* Units.swift */; };
 		75CB6E4D1C7732C8F4062BDC /* SharedStore.swift in widget */ = {isa = PBXBuildFile; fileRef = BD55AED8D9196D79F177F2E9 /* SharedStore.swift */; };
-		776412EBB9E199C31C8DDAB0 /* Palette+Targets.swift in app */ = {isa = PBXBuildFile; fileRef = ECD9542C7CBCC676CBE7F162 /* Palette+Targets.swift */; };
 		77A8194B82784FDA7DA2C802 /* ScopeGeometry.swift in tests */ = {isa = PBXBuildFile; fileRef = 67D893774DA7DCE074FD16D7 /* ScopeGeometry.swift */; };
-		7A0A68FB9E191D8E74885CF4 /* Aircraft.swift in app */ = {isa = PBXBuildFile; fileRef = 7BD55B7E9E21223542B9D228 /* Aircraft.swift */; };
 		7F3F8AD2502CACF145489364 /* Assets.xcassets in widget */ = {isa = PBXBuildFile; fileRef = 223D3BCC0D79CBFCF77673A2 /* Assets.xcassets */; };
-		803C98E465564C1AA0EB3A01 /* PreviewData.swift in app */ = {isa = PBXBuildFile; fileRef = 6081900E8E9F3F5DC98613B2 /* PreviewData.swift */; };
+		7FE163442C681BB584983DD3 /* SettingsView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 55CC6012580E05C4FC96DC88 /* SettingsView.swift */; };
 		825CDD555B96B10970BFDB3E /* GeodesyTests.swift in tests */ = {isa = PBXBuildFile; fileRef = 447F231D9A46F734AEDE95E6 /* GeodesyTests.swift */; };
-		88D222B0DB1C08D0A52F7826 /* SharedStore.swift in app */ = {isa = PBXBuildFile; fileRef = BD55AED8D9196D79F177F2E9 /* SharedStore.swift */; };
-		92D3F9FD077990A4AE9E13A4 /* Typography.swift in app */ = {isa = PBXBuildFile; fileRef = 936B770F7CB201F82397C13A /* Typography.swift */; };
 		A035B2BFCD18021B5779B4DF /* Units.swift in widget */ = {isa = PBXBuildFile; fileRef = CE2E5FCABFDD403157A767A8 /* Units.swift */; };
-		A5312966FD661583587621F5 /* TrackedTarget.swift in app */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
-		A6A3C7254F9FDF55C45AC7A5 /* RadarView.swift in app */ = {isa = PBXBuildFile; fileRef = 33948CB9D81D8480EA634CF4 /* RadarView.swift */; };
+		A8417ADCD4EDE98E70C06F53 /* SharedStore.swift in watchapp */ = {isa = PBXBuildFile; fileRef = BD55AED8D9196D79F177F2E9 /* SharedStore.swift */; };
 		AB71B978255A5B6A0ED47F10 /* AircraftResponse.swift in tests */ = {isa = PBXBuildFile; fileRef = 75C809DA8E9E2A0CC387E5A8 /* AircraftResponse.swift */; };
-		ADCD9B7CF888B51F25B62C19 /* Haptics.swift in app */ = {isa = PBXBuildFile; fileRef = 3586B3FBD4D48B1A95804906 /* Haptics.swift */; };
 		AE4C4E24C3337BFF89D1B28C /* Aircraft.swift in tests */ = {isa = PBXBuildFile; fileRef = 7BD55B7E9E21223542B9D228 /* Aircraft.swift */; };
+		AFD08A183F395AB82E4A734C /* FailureStateView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 7BFE00036930C6A911254B2C /* FailureStateView.swift */; };
 		B12927367252316039B60A35 /* Fixtures.swift in tests */ = {isa = PBXBuildFile; fileRef = B42C9A6C9AE35D50A24FBFCF /* Fixtures.swift */; };
-		B7086379498051D7D70B151E /* AircraftResponse.swift in app */ = {isa = PBXBuildFile; fileRef = 75C809DA8E9E2A0CC387E5A8 /* AircraftResponse.swift */; };
-		C16882120A9CD92F1A6FC286 /* Assets.xcassets in app */ = {isa = PBXBuildFile; fileRef = 6310B04D64214F3E183A566E /* Assets.xcassets */; };
-		CF26D6E5D7F39357CBE7D749 /* SkyWatchApp.swift in app */ = {isa = PBXBuildFile; fileRef = C7AFD0BDFD60B88AC47CDBBF /* SkyWatchApp.swift */; };
+		B56BAAA99EF0D4CF61F8D455 /* Geodesy.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
+		B69FEA51B569C9E8F1976247 /* RootView.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 09E248E7C11F759EEF947830 /* RootView.swift */; };
+		BA85255A31B5440D147BDC3D /* Preview Assets.xcassets in watchapp */ = {isa = PBXBuildFile; fileRef = 31FCF5F88243B2A6A9E776CA /* Preview Assets.xcassets */; };
+		C58B5B8B0DBAE1A65C663A25 /* RateLimiter.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 3411E7E1106CFF80C248B329 /* RateLimiter.swift */; };
+		CA1CCB25AC28EABBBA80FB00 /* PreviewData.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 6081900E8E9F3F5DC98613B2 /* PreviewData.swift */; };
+		CE180C287612654B616C08A4 /* Haptics.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 3586B3FBD4D48B1A95804906 /* Haptics.swift */; };
 		D029F649711CC26D3B7948BE /* Palette.swift in widget */ = {isa = PBXBuildFile; fileRef = A939F413633D6824EE0415F7 /* Palette.swift */; };
-		D1667CB10CF2D9DB8BB0C565 /* SettingsView.swift in app */ = {isa = PBXBuildFile; fileRef = 55CC6012580E05C4FC96DC88 /* SettingsView.swift */; };
-		D1842B0C16BFCCEADA9F58EC /* NearestCallout.swift in app */ = {isa = PBXBuildFile; fileRef = 34F361B15166C3445F3FECCD /* NearestCallout.swift */; };
-		DB44DC96E1B4B66AD86DA60E /* AircraftDetailView.swift in app */ = {isa = PBXBuildFile; fileRef = 2B210940163CCE68D69E5C0E /* AircraftDetailView.swift */; };
-		E50B77EA98356344340C0EA1 /* ScanStore.swift in app */ = {isa = PBXBuildFile; fileRef = A21687414CCE1C08AFF76CA0 /* ScanStore.swift */; };
-		E5894AF739B60A106BC3D733 /* LocationService.swift in app */ = {isa = PBXBuildFile; fileRef = BD05DC93E709A67C94E8ED4E /* LocationService.swift */; };
+		E27A77C25E58CD36FF0994AB /* AircraftResponse.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 75C809DA8E9E2A0CC387E5A8 /* AircraftResponse.swift */; };
 		E67D59653586B898A07E1762 /* Geodesy.swift in widget */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
-		EA4438307537D0A1D6831B7C /* Preview Assets.xcassets in app */ = {isa = PBXBuildFile; fileRef = 31FCF5F88243B2A6A9E776CA /* Preview Assets.xcassets */; };
 		F22B6E88AF4AFF2BADEB4BA3 /* Typography.swift in widget */ = {isa = PBXBuildFile; fileRef = 936B770F7CB201F82397C13A /* Typography.swift */; };
-		F743429CFB656947D8ED8391 /* Settings.swift in app */ = {isa = PBXBuildFile; fileRef = 2BB599019BCAE70AFA876BA9 /* Settings.swift */; };
-		FA9297AD34CE914A9B27D53C /* AirplanesLiveClient.swift in app */ = {isa = PBXBuildFile; fileRef = CB105CA869BA1B93F7A813CD /* AirplanesLiveClient.swift */; };
-		FDD13CE6AA91E15A57025F91 /* RootView.swift in app */ = {isa = PBXBuildFile; fileRef = 09E248E7C11F759EEF947830 /* RootView.swift */; };
-		FEF6D89080E939453AE60B40 /* AircraftListView.swift in app */ = {isa = PBXBuildFile; fileRef = 33836BF3409EF91C361297AC /* AircraftListView.swift */; };
 		4581C7BC007749FD8877B3C7 /* SkyWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 421F511B2A0CBEB0819D8820 /* SkyWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		ABD9461ECEBCA085A62338E8 /* SkyWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 32F557046B8B0982A542FAC0 /* SkyWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase, PBXFileReference and PBXGroup sections follow */
@@ -100,7 +101,8 @@
 		114DB1DE390EC5DB421A57CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
 		825EE7846E053B257417FA76 /* SkyWatchWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SkyWatchWidget.entitlements"; sourceTree = "<group>"; };
 		19441C894EA6DCA27A6D6133 /* SkyWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkyWatchWidget.swift"; sourceTree = "<group>"; };
-		D6871E7FE5D3B289C2643DD7 /* SkyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		993D4F1E0401A58E5C61C949 /* SkyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		32F557046B8B0982A542FAC0 /* SkyWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SkyWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		421F511B2A0CBEB0819D8820 /* SkyWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SkyWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		465B721E281B8A67F3F41201 /* SkyWatchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SkyWatchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -234,7 +236,8 @@
 		F54CD936E573369F98BA3613 = {
 			isa = PBXGroup;
 			children = (
-				D6871E7FE5D3B289C2643DD7 /* SkyWatch.app */,
+				993D4F1E0401A58E5C61C949 /* SkyWatch.app */,
+				32F557046B8B0982A542FAC0 /* SkyWatch Watch App.app */,
 				421F511B2A0CBEB0819D8820 /* SkyWatchWidget.appex */,
 				465B721E281B8A67F3F41201 /* SkyWatchTests.xctest */,
 			);
@@ -255,36 +258,36 @@
 /* End PBXGroup section */
 
 /* Begin PBXSourcesBuildPhase section */
-		53198DC6C37B58630585589C /* Sources */ = {
+		A21B4D2E4268373705DA3AA6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADCD9B7CF888B51F25B62C19 /* Haptics.swift in Sources */,
-				776412EBB9E199C31C8DDAB0 /* Palette+Targets.swift in Sources */,
-				58C04FDBC4FF80C7EC2B8108 /* Palette.swift in Sources */,
-				92D3F9FD077990A4AE9E13A4 /* Typography.swift in Sources */,
-				2096AE6A7A60B1E6ADF5DA77 /* Geodesy.swift in Sources */,
-				7A0A68FB9E191D8E74885CF4 /* Aircraft.swift in Sources */,
-				B7086379498051D7D70B151E /* AircraftResponse.swift in Sources */,
-				F743429CFB656947D8ED8391 /* Settings.swift in Sources */,
-				6E90191C8F8FCAB325E2FABE /* Units.swift in Sources */,
-				FA9297AD34CE914A9B27D53C /* AirplanesLiveClient.swift in Sources */,
-				E5894AF739B60A106BC3D733 /* LocationService.swift in Sources */,
-				3AD4BCF8752ABBE75D475759 /* RateLimiter.swift in Sources */,
-				88D222B0DB1C08D0A52F7826 /* SharedStore.swift in Sources */,
-				CF26D6E5D7F39357CBE7D749 /* SkyWatchApp.swift in Sources */,
-				E50B77EA98356344340C0EA1 /* ScanStore.swift in Sources */,
-				A5312966FD661583587621F5 /* TrackedTarget.swift in Sources */,
-				DB44DC96E1B4B66AD86DA60E /* AircraftDetailView.swift in Sources */,
-				FEF6D89080E939453AE60B40 /* AircraftListView.swift in Sources */,
-				1E338E3DB34BF4FCA054E151 /* Badges.swift in Sources */,
-				37B7CC2B8617BB9186194ABA /* FailureStateView.swift in Sources */,
-				D1842B0C16BFCCEADA9F58EC /* NearestCallout.swift in Sources */,
-				245F3667ABBE0B4C66BF9D06 /* ScopeGeometry.swift in Sources */,
-				803C98E465564C1AA0EB3A01 /* PreviewData.swift in Sources */,
-				A6A3C7254F9FDF55C45AC7A5 /* RadarView.swift in Sources */,
-				FDD13CE6AA91E15A57025F91 /* RootView.swift in Sources */,
-				D1667CB10CF2D9DB8BB0C565 /* SettingsView.swift in Sources */,
+				CE180C287612654B616C08A4 /* Haptics.swift in Sources */,
+				3BDC405302F927E5A8D35F49 /* Palette+Targets.swift in Sources */,
+				00CAEAA66A22792FE285DC5F /* Palette.swift in Sources */,
+				3DC2B4CA4D2A620A5FDC4C4D /* Typography.swift in Sources */,
+				B56BAAA99EF0D4CF61F8D455 /* Geodesy.swift in Sources */,
+				341A55CD7C483C8256D22DD0 /* Aircraft.swift in Sources */,
+				E27A77C25E58CD36FF0994AB /* AircraftResponse.swift in Sources */,
+				1BD38E5D06C272AEE5D749AE /* Settings.swift in Sources */,
+				68528684BC448C4FF21C99D4 /* Units.swift in Sources */,
+				5ED3B198BF6F979EFBFDB2F0 /* AirplanesLiveClient.swift in Sources */,
+				295036F6379D4DA3E1273F37 /* LocationService.swift in Sources */,
+				C58B5B8B0DBAE1A65C663A25 /* RateLimiter.swift in Sources */,
+				A8417ADCD4EDE98E70C06F53 /* SharedStore.swift in Sources */,
+				4C31F57329F994C730637874 /* SkyWatchApp.swift in Sources */,
+				4BB0CE3F60DE0B87F8482299 /* ScanStore.swift in Sources */,
+				0DF79AADD25D474C957F11EB /* TrackedTarget.swift in Sources */,
+				3E038C7C2370250728FAFC8C /* AircraftDetailView.swift in Sources */,
+				03E173A985C3F69915C62D68 /* AircraftListView.swift in Sources */,
+				53E76F098384BA47EE5C23BA /* Badges.swift in Sources */,
+				AFD08A183F395AB82E4A734C /* FailureStateView.swift in Sources */,
+				63350949D68DFBD8B51BBDBF /* NearestCallout.swift in Sources */,
+				2F650B29562A78562CAC19B2 /* ScopeGeometry.swift in Sources */,
+				CA1CCB25AC28EABBBA80FB00 /* PreviewData.swift in Sources */,
+				3216ABCA4DAB8DA319E111DB /* RadarView.swift in Sources */,
+				B69FEA51B569C9E8F1976247 /* RootView.swift in Sources */,
+				7FE163442C681BB584983DD3 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,12 +327,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
-		81AD946F3CFB886263B716CC /* Resources */ = {
+		E2ABFDE272FA411A686DF33F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C16882120A9CD92F1A6FC286 /* Assets.xcassets in Resources */,
-				EA4438307537D0A1D6831B7C /* Preview Assets.xcassets in Resources */,
+				065D6AB8F53DD3C2F9DF70D6 /* Assets.xcassets in Resources */,
+				BA85255A31B5440D147BDC3D /* Preview Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -344,7 +347,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		953746E9467872522866BED5 /* Frameworks */ = {
+		C5739CA4BF07F447F7DEC371 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -368,7 +371,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		1EA9ABB02F22CD41C7D0C101 /* Embed Foundation Extensions */ = {
+		0C068FDD4F3BD74C554B2B34 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				ABD9461ECEBCA085A62338E8 /* SkyWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4A460DCB8EDCA02F8E178B97 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
@@ -382,23 +396,39 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		7DD0A2F01353ED35078A4D5C /* SkyWatch */ = {
+		16E4F0BFD014CFFE4F2D8E22 /* SkyWatch */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CCB3B54F744F4CDC237DEB30 /* Build configuration list for PBXNativeTarget "SkyWatch" */;
+			buildConfigurationList = 905B6535C297B72A9A66DD74 /* Build configuration list for PBXNativeTarget "SkyWatch" */;
 			buildPhases = (
-				53198DC6C37B58630585589C /* Sources */,
-				953746E9467872522866BED5 /* Frameworks */,
-				81AD946F3CFB886263B716CC /* Resources */,
-				1EA9ABB02F22CD41C7D0C101 /* Embed Foundation Extensions */,
+				0C068FDD4F3BD74C554B2B34 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				1A5BA99C11F97893CDA67C01 /* PBXTargetDependency */,
+				27277AB031E155F9A7B69FCA /* PBXTargetDependency */,
 			);
 			name = SkyWatch;
 			productName = SkyWatch;
-			productReference = D6871E7FE5D3B289C2643DD7 /* SkyWatch.app */;
+			productReference = 993D4F1E0401A58E5C61C949 /* SkyWatch.app */;
+			productType = "com.apple.product-type.application.watchapp2-container";
+		};
+		D672F4B4EF39D6881C949B3C /* SkyWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 54430427AE361CF7975E5230 /* Build configuration list for PBXNativeTarget "SkyWatch Watch App" */;
+			buildPhases = (
+				A21B4D2E4268373705DA3AA6 /* Sources */,
+				C5739CA4BF07F447F7DEC371 /* Frameworks */,
+				E2ABFDE272FA411A686DF33F /* Resources */,
+				4A460DCB8EDCA02F8E178B97 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B06A6147BA23A8D5F9BEB5E7 /* PBXTargetDependency */,
+			);
+			name = "SkyWatch Watch App";
+			productName = "SkyWatch Watch App";
+			productReference = 32F557046B8B0982A542FAC0 /* SkyWatch Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
 		EA971122DBA5ED8255B9A99F /* SkyWatchWidget */ = {
@@ -437,15 +467,27 @@
 /* End PBXNativeTarget section */
 
 /* Begin PBXTargetDependency section */
-		1A5BA99C11F97893CDA67C01 /* PBXTargetDependency */ = {
+		27277AB031E155F9A7B69FCA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D672F4B4EF39D6881C949B3C /* SkyWatch Watch App */;
+			targetProxy = 0F663018958CABEA3324DCA1 /* PBXContainerItemProxy */;
+		};
+		B06A6147BA23A8D5F9BEB5E7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = EA971122DBA5ED8255B9A99F /* SkyWatchWidget */;
-			targetProxy = FD09EB3DCF0AC8D8D29F513F /* PBXContainerItemProxy */;
+			targetProxy = 5EE01A6D2347152C42521A31 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXContainerItemProxy section */
-		FD09EB3DCF0AC8D8D29F513F /* PBXContainerItemProxy */ = {
+		0F663018958CABEA3324DCA1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 244210E48437B6556980A702 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D672F4B4EF39D6881C949B3C;
+			remoteInfo = "SkyWatch Watch App";
+		};
+		5EE01A6D2347152C42521A31 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 244210E48437B6556980A702 /* Project object */;
 			proxyType = 1;
@@ -462,7 +504,10 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
-					7DD0A2F01353ED35078A4D5C = {
+					16E4F0BFD014CFFE4F2D8E22 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					D672F4B4EF39D6881C949B3C = {
 						CreatedOnToolsVersion = 26.0;
 					};
 					EA971122DBA5ED8255B9A99F = {
@@ -486,7 +531,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7DD0A2F01353ED35078A4D5C /* SkyWatch */,
+				16E4F0BFD014CFFE4F2D8E22 /* SkyWatch */,
+				D672F4B4EF39D6881C949B3C /* SkyWatch Watch App */,
 				EA971122DBA5ED8255B9A99F /* SkyWatchWidget */,
 				416165E5D44795A49D73FC46 /* SkyWatchTests */,
 			);
@@ -514,9 +560,9 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
+						"DEBUG=1",
+						"$(inherited)",
+					);
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
@@ -571,7 +617,46 @@
 			};
 			name = Release;
 		};
-		79D59B786BAFF1DA9063A23A /* Debug */ = {
+		272F230A6210AEEC789BCE74 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fmz.skywatch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9E672432513666057F478F48 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S232V5F699;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fmz.skywatch;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(PROFILE_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		6C97125375D4517FCC88ABF8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -579,20 +664,20 @@
 				CODE_SIGN_ENTITLEMENTS = SkyWatch/SkyWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SkyWatch/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\\"SkyWatch/Preview Content\\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SkyWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SkyWatch;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fmz.skywatch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fmz.skywatch.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Debug;
 		};
-		12A56D47EE3A9D0630AF03FC /* Release */ = {
+		AD7263F62701ACC2A6038702 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -601,17 +686,17 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SkyWatch/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\\"SkyWatch/Preview Content\\"";
 				DEVELOPMENT_TEAM = S232V5F699;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SkyWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SkyWatch;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fmz.skywatch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fmz.skywatch.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "$(PROFILE_NAME)";
-				SKIP_INSTALL = NO;
+				PROVISIONING_PROFILE_SPECIFIER = "$(PROFILE_NAME_WATCHAPP)";
+				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
@@ -699,11 +784,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CCB3B54F744F4CDC237DEB30 /* Build configuration list for PBXNativeTarget "SkyWatch" */ = {
+		905B6535C297B72A9A66DD74 /* Build configuration list for PBXNativeTarget "SkyWatch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				79D59B786BAFF1DA9063A23A /* Debug */,
-				12A56D47EE3A9D0630AF03FC /* Release */,
+				272F230A6210AEEC789BCE74 /* Debug */,
+				9E672432513666057F478F48 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		54430427AE361CF7975E5230 /* Build configuration list for PBXNativeTarget "SkyWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6C97125375D4517FCC88ABF8 /* Debug */,
+				AD7263F62701ACC2A6038702 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
