@@ -49,15 +49,32 @@ jobs:
         run: |
           # xcodebuild's valid watch destinations carry different UDIDs than simctl lists
           # (paired-simulator IDs), and -showdestinations writes them to stderr. Merge the
-          # streams and pick the first watchOS Simulator UUID.
+          # streams and pick the first watchOS Simulator UUID. -showdestinations can
+          # intermittently return nothing on a fresh runner, so fall back to simctl:
+          # boot the first available watch simulator and use its UDID.
           UDID=$(xcodebuild -project SkyWatch.xcodeproj -scheme "SkyWatch Watch App" -showdestinations 2>&1 \
             | grep -A4 'platform:watchOS Simulator' \
             | grep -oE 'id:[0-9A-Fa-f-]{36}' \
             | head -1 \
             | cut -d: -f2)
+          if [ -z "$UDID" ]; then
+            echo "showdestinations returned no watch UDID — falling back to simctl"
+            UDID=$(xcrun simctl list devices available \
+              | grep -E 'Apple Watch' \
+              | grep -oE '[0-9A-Fa-f-]{36}' \
+              | head -1)
+            if [ -n "$UDID" ]; then
+              xcrun simctl boot "$UDID" 2>/dev/null || true
+            fi
+          fi
           echo "Testing on UDID: $UDID"
-          xcodebuild test \
-            -project SkyWatch.xcodeproj \
-            -scheme "SkyWatch Watch App" \
-            -destination "platform=watchOS Simulator,id=$UDID" \
-            CODE_SIGNING_ALLOWED=NO
+          if [ -n "$UDID" ]; then
+            xcodebuild test \
+              -project SkyWatch.xcodeproj \
+              -scheme "SkyWatch Watch App" \
+              -destination "platform=watchOS Simulator,id=$UDID" \
+              CODE_SIGNING_ALLOWED=NO
+          else
+            echo "::error::No watchOS simulator UDID available from either source"
+            exit 1
+          fi
