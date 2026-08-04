@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>AeroAPIKey</key>
+	<string>$(AEROAPI_KEY)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SkyWatch uses your location to find aircraft flying near you.</string>
 	<key>UISupportedInterfaceOrientations</key>

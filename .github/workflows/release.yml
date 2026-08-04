@@ -93,12 +93,15 @@ jobs:
         env:
           INPUT_BUILD_NUMBER: ${{ inputs.build_number }}
           MARKETING_VERSION: ${{ inputs.marketing_version }}
+          AEROAPI_KEY: ${{ secrets.AEROAPI_KEY }}
         run: |
           BUILD_NUMBER="${INPUT_BUILD_NUMBER:-$(date +%Y%m%d%H%M%S)}"
           echo "Building SkyWatch $MARKETING_VERSION ($BUILD_NUMBER)"
           # The scheme's primary buildable is the iOS watchapp2-container; the
           # watch app + widget are embedded into it (Watch/ dir). Archiving the
           # container is what makes the archive App-Store-distributable.
+          # AEROAPI_KEY is passed as a build setting: the watch app's Info.plist
+          # reads it ($(AEROAPI_KEY)) into the AeroAPIKey entry.
           xcodebuild archive \
             -project SkyWatch.xcodeproj \
             -scheme SkyWatch \
@@ -107,6 +110,7 @@ jobs:
             -archivePath "$RUNNER_TEMP/SkyWatch.xcarchive" \
             MARKETING_VERSION="$MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            AEROAPI_KEY="$AEROAPI_KEY" \
             -quiet
 
       - name: Export IPA

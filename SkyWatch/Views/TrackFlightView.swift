@@ -122,6 +122,7 @@ struct TrackFlightView: View {
             VStack(spacing: 10) {
                 headerRow
                 statusCard
+                officialStatus
                 alertMilestones
                 stopButton
             }
@@ -217,6 +218,76 @@ struct TrackFlightView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .background(RoundedRectangle(cornerRadius: 14).fill(Palette.scopeBase.opacity(0.45)))
+    }
+
+    /// Official status from FlightAware (when the AeroAPI layer is active).
+    @ViewBuilder
+    private var officialStatus: some View {
+        if store.aeroStatus != nil || store.aeroError != nil {
+            VStack(spacing: 4) {
+                if let aeroError = store.aeroError {
+                    Label(aeroError, systemImage: "exclamationmark.triangle")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                } else if let status = store.aeroStatus {
+                    HStack(spacing: 4) {
+                        Image(systemName: officialIcon(status))
+                            .foregroundStyle(officialColor(status))
+                        Text(officialTitle(status))
+                            .font(.system(.caption, design: .rounded).weight(.semibold))
+                        Spacer()
+                    }
+                    if let gate = store.gate {
+                        Text("Gate \(gate)\(store.terminal.map { " · Terminal \($0)" } ?? "")")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let arrival = store.officialArrival {
+                        Text("Arrives \(arrival.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Palette.scopeBase.opacity(0.3)))
+        }
+    }
+
+    private func officialIcon(_ status: AeroStatus) -> String {
+        switch status {
+        case .landed, .arrived: "checkmark.seal.fill"
+        case .enRoute: "airplane"
+        case .departed: "airplane.departure"
+        case .cancelled: "xmark.octagon"
+        case .diverted: "arrow.triangle.branch"
+        default: "calendar"
+        }
+    }
+
+    private func officialColor(_ status: AeroStatus) -> Color {
+        switch status {
+        case .landed, .arrived: .green
+        case .cancelled, .diverted: .red
+        default: .tint
+        }
+    }
+
+    private func officialTitle(_ status: AeroStatus) -> String {
+        switch status {
+        case .scheduled: "Scheduled"
+        case .departed: "Departed"
+        case .enRoute: "En route"
+        case .landed: "Landed"
+        case .arrived: "Arrived"
+        case .cancelled: "Cancelled"
+        case .diverted: "Diverted"
+        case .unknown: "Status unknown"
+        }
     }
 
     private var alertMilestones: some View {

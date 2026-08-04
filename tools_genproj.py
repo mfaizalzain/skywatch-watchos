@@ -65,6 +65,7 @@ WIDGET_SHARED = [
 # into it directly. Only UI-free sources qualify.
 TEST_SHARED = [
     "SkyWatch/Geo/Geodesy.swift",
+    "SkyWatch/Models/AeroFlight.swift",
     "SkyWatch/Models/Aircraft.swift",
     "SkyWatch/Models/AircraftResponse.swift",
     "SkyWatch/Models/Airports.swift",
@@ -603,6 +604,7 @@ CONTAINER_SETTINGS = {
 }
 
 WATCHAPP_SETTINGS = {
+    "AEROAPI_KEY": "",
     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
     "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
     "CODE_SIGN_ENTITLEMENTS": "SkyWatch/SkyWatch.entitlements",

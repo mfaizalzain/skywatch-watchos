@@ -24,6 +24,19 @@ final class FlightTrackStore {
     /// Distance from the aircraft's last known position to the airport (NM).
     private(set) var distanceNM: Double?
 
+    // MARK: AeroAPI official-status layer (optional — needs a build-injected key)
+
+    /// Official status from FlightAware, when the layer is active.
+    private(set) var aeroStatus: AeroStatus?
+    /// Arrival terminal at the destination, when FlightAware knows it.
+    private(set) var terminal: String?
+    /// Arrival gate, when FlightAware knows it.
+    private(set) var gate: String?
+    /// Estimated/scheduled gate arrival, when known.
+    private(set) var officialArrival: Date?
+    /// A human-readable problem with the AeroAPI layer (bad key, no quota…).
+    private(set) var aeroError: String?
+
     /// Set from `\.isLuminanceReduced`; backs the poll loop off on wrist-down.
     var isLuminanceReduced = false {
         didSet {
@@ -36,14 +49,24 @@ final class FlightTrackStore {
 
     private let client: AirplanesLiveClient
     private let notifier: FlightNotifier
+    /// Non-nil only when the build has an AeroAPI key injected.
+    private let aeroClient: AeroAPIClient?
     private let logger = Logger(subsystem: "com.fmz.skywatch", category: "flight-track")
 
     private var pollTask: Task<Void, Never>?
     private var isActive = false
+    /// AeroAPI is metered — poll it at a fifth of the live cadence. 12
+    /// queries/hour ≈ $0.06, trivially inside the feeder's $10/mo allowance.
+    private var lastAeroPoll: Date?
 
-    init(client: AirplanesLiveClient = AirplanesLiveClient(), notifier: FlightNotifier = FlightNotifier()) {
+    init(
+        client: AirplanesLiveClient = AirplanesLiveClient(),
+        notifier: FlightNotifier = FlightNotifier(),
+        aeroClient: AeroAPIClient? = AeroAPIClient.hasConfiguredKey ? AeroAPIClient() : nil
+    ) {
         self.client = client
         self.notifier = notifier
+        self.aeroClient = aeroClient
     }
 
     // MARK: - Lifecycle
@@ -66,6 +89,12 @@ final class FlightTrackStore {
         self.alertState = FlightAlertState()
         self.distanceNM = nil
         self.error = nil
+        self.aeroStatus = nil
+        self.terminal = nil
+        self.gate = nil
+        self.officialArrival = nil
+        self.aeroError = nil
+        self.lastAeroPoll = nil
         Task { await notifier.requestAuthorizationIfNeeded() }
         if isActive { startPolling() }
     }
@@ -78,6 +107,11 @@ final class FlightTrackStore {
         alertState = FlightAlertState()
         distanceNM = nil
         error = nil
+        aeroStatus = nil
+        terminal = nil
+        gate = nil
+        officialArrival = nil
+        aeroError = nil
     }
 
     // MARK: - Polling
@@ -107,6 +141,12 @@ final class FlightTrackStore {
         guard let flightNumber, let airport else { return }
         isLoading = true
         defer { isLoading = false }
+
+        // AeroAPI is metered: refresh at most once per five minutes, and only
+        // when a key is present in the build.
+        if aeroClient != nil, lastAeroPoll == nil || Date().timeIntervalSince(lastAeroPoll!) >= 300 {
+            await refreshAero(flightNumber: flightNumber)
+        }
 
         do {
             let response = try await client.aircraft(callsign: flightNumber.callsign)
@@ -157,6 +197,54 @@ final class FlightTrackStore {
         } catch let other {
             self.error = .decoding(underlying: other.localizedDescription)
             logger.warning("Poll failed: \(other.localizedDescription)")
+        }
+    }
+
+    /// Official status from FlightAware. Called on a 5-minute cadence; never
+    /// blanks the live layer on a transient failure (the last good state stays
+    /// on screen, and the scan loop owns the error banner).
+    private func refreshAero(flightNumber: FlightNumber) async {
+        guard let aeroClient else { return }
+        lastAeroPoll = Date()
+
+        do {
+            let flight = try await aeroClient.flight(ident: flightNumber.callsign)
+            try Task.checkCancellation()
+            guard flightNumber == self.flightNumber else { return }
+
+            guard let flight else {
+                // No upcoming flight found — leave the last known state up.
+                return
+            }
+            aeroStatus = flight.phase
+            terminal = flight.destination?.terminal
+            gate = flight.destination?.gate
+            officialArrival = flight.gateArrival
+            aeroError = nil
+
+            // Official landed beats the feed-based inference: FlightAware
+            // knows the flight has arrived even if the transponder is already
+            // off and the aircraft has left the ADS-B feed.
+            if flight.phase.hasLanded {
+                fireAlertsIfNeeded(isLanded: true)
+            }
+        } catch is CancellationError {
+            // Loop is tearing down — nothing to do.
+        } catch let failure as AeroAPIError {
+            switch failure {
+            case .unauthorized:
+                aeroError = "Invalid FlightAware key"
+            case .notFound:
+                aeroError = "Flight not found on FlightAware"
+            case .rateLimited:
+                aeroError = "FlightAware quota reached"
+            default:
+                aeroError = "FlightAware unavailable"
+            }
+            logger.warning("AeroAPI poll failed: \(String(describing: failure), privacy: .public)")
+        } catch {
+            aeroError = "FlightAware unavailable"
+            logger.warning("AeroAPI poll failed: \(error.localizedDescription)")
         }
     }
 
