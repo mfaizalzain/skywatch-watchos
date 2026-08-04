@@ -35,12 +35,13 @@ jobs:
 
       - name: Build (watchOS Simulator, unsigned)
         run: |
-          # The scheme's primary buildable is the iOS container (for App Store
-          # distribution); CI builds the watch app itself for the simulator.
+          # The container scheme (SkyWatch) is for App Store distribution; its
+          # LaunchAction is the iOS container, so -showdestinations only lists
+          # iOS simulators. CI builds/tests the watch app scheme instead.
           xcodebuild build \
             -project SkyWatch.xcodeproj \
-            -target "SkyWatch Watch App" \
-            -sdk watchsimulator \
+            -scheme "SkyWatch Watch App" \
+            -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
 
@@ -49,7 +50,7 @@ jobs:
           # xcodebuild's valid watch destinations carry different UDIDs than simctl lists
           # (paired-simulator IDs), and -showdestinations writes them to stderr. Merge the
           # streams and pick the first watchOS Simulator UUID.
-          UDID=$(xcodebuild -project SkyWatch.xcodeproj -scheme SkyWatch -showdestinations 2>&1 \
+          UDID=$(xcodebuild -project SkyWatch.xcodeproj -scheme "SkyWatch Watch App" -showdestinations 2>&1 \
             | grep -A4 'platform:watchOS Simulator' \
             | grep -oE 'id:[0-9A-Fa-f-]{36}' \
             | head -1 \
@@ -57,6 +58,6 @@ jobs:
           echo "Testing on UDID: $UDID"
           xcodebuild test \
             -project SkyWatch.xcodeproj \
-            -scheme SkyWatch \
+            -scheme "SkyWatch Watch App" \
             -destination "platform=watchOS Simulator,id=$UDID" \
             CODE_SIGNING_ALLOWED=NO

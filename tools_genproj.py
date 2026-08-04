@@ -768,9 +768,9 @@ scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "{targets['watchapp']}"
-               BuildableName = "SkyWatch Watch App.app"
-               BlueprintName = "SkyWatch Watch App"
+               BlueprintIdentifier = "{targets['container']}"
+               BuildableName = "SkyWatch.app"
+               BlueprintName = "SkyWatch"
                ReferencedContainer = "container:SkyWatch.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -819,6 +819,68 @@ scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
 """
 with open(os.path.join(scheme_dir, "SkyWatch.xcscheme"), "w") as handle:
     handle.write(scheme)
+
+# Second scheme: the watch app itself. CI builds/tests this scheme on a
+# watchOS Simulator (the container scheme only advertises iOS destinations,
+# since its LaunchAction is the iOS container).
+watch_scheme = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion = "2600" version = "1.7">
+   <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{targets['watchapp']}"
+               BuildableName = "SkyWatch Watch App.app"
+               BlueprintName = "SkyWatch Watch App"
+               ReferencedContainer = "container:SkyWatch.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+         <TestableReference skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{targets['tests']}"
+               BuildableName = "SkyWatchTests.xctest"
+               BlueprintName = "SkyWatchTests"
+               ReferencedContainer = "container:SkyWatch.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{targets['watchapp']}"
+            BuildableName = "SkyWatch Watch App.app"
+            BlueprintName = "SkyWatch Watch App"
+            ReferencedContainer = "container:SkyWatch.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{targets['watchapp']}"
+            BuildableName = "SkyWatch Watch App.app"
+            BlueprintName = "SkyWatch Watch App"
+            ReferencedContainer = "container:SkyWatch.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction buildConfiguration = "Release" revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
+"""
+with open(os.path.join(scheme_dir, "SkyWatch Watch App.xcscheme"), "w") as handle:
+    handle.write(watch_scheme)
 
 print("app sources:", len(APP_SOURCES))
 print("widget sources:", len(WIDGET_OWN) + len(WIDGET_SHARED))
