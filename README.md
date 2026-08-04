@@ -28,7 +28,8 @@ Built for personal sideloading. It is not intended for the App Store.
   Alerts vibrate the watch (a strong buzz on landing), and when a FlightAware AeroAPI key is
   injected at build time, the screen also shows the airline's *official* status, terminal, gate
   and estimated arrival — and the landed alert is triggered by the airline's own status rather
-  than inferred from the ADS-B feed.
+  than inferred from the ADS-B feed. Tracking stops automatically once the flight has landed
+  (the final state stays on screen until you dismiss it), so nothing keeps polling afterwards.
 - **Settings** — radius, refresh interval, units, heading-up vs north-up, filters, proximity haptic.
 - **Complication** — a Smart Stack widget with the count in range and the nearest aircraft.
 

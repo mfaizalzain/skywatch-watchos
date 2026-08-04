@@ -36,6 +36,9 @@ final class FlightTrackStore {
     private(set) var officialArrival: Date?
     /// A human-readable problem with the AeroAPI layer (bad key, no quota…).
     private(set) var aeroError: String?
+    /// Set when the landed alert fires: polling stops (the pickup job is done)
+    /// but the final state stays on screen until the user clears it.
+    private(set) var hasAutoStopped = false
 
     /// Set from `\.isLuminanceReduced`; backs the poll loop off on wrist-down.
     var isLuminanceReduced = false {
@@ -72,9 +75,11 @@ final class FlightTrackStore {
     // MARK: - Lifecycle
 
     /// Driven by `scenePhase`, mirroring `ScanStore` — no polling off-screen.
+    /// After an auto-stop (landed) the flag stays set, so returning to the
+    /// foreground does not resurrect polling for a finished pickup.
     func setActive(_ active: Bool) {
         isActive = active
-        if active, flightNumber != nil {
+        if active, flightNumber != nil, !hasAutoStopped {
             startPolling()
         } else {
             stopPolling()
@@ -95,6 +100,7 @@ final class FlightTrackStore {
         self.officialArrival = nil
         self.aeroError = nil
         self.lastAeroPoll = nil
+        self.hasAutoStopped = false
         Task { await notifier.requestAuthorizationIfNeeded() }
         if isActive { startPolling() }
     }
@@ -112,6 +118,7 @@ final class FlightTrackStore {
         gate = nil
         officialArrival = nil
         aeroError = nil
+        hasAutoStopped = false
     }
 
     // MARK: - Polling
@@ -263,6 +270,14 @@ final class FlightTrackStore {
             Haptics.flightMilestone()
         }
         Task { await notifier.fire(alert, flight: flightNumber.callsign) }
+
+        // Landed is the end of the pickup job: stop polling so nothing keeps
+        // hitting the APIs, but leave the final state on screen. The user
+        // clears it with Stop Tracking or starts a new flight.
+        if alert == .landed {
+            hasAutoStopped = true
+            stopPolling()
+        }
     }
 
     // MARK: - Helpers

@@ -302,15 +302,22 @@ struct TrackFlightView: View {
     }
 
     private var stopButton: some View {
-        Button(role: .destructive) {
-            store.stopTracking()
-        } label: {
-            Label("Stop Tracking", systemImage: "stop.circle")
-                .font(.system(.body, design: .rounded).weight(.medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+        VStack(spacing: 6) {
+            if store.hasAutoStopped {
+                Label("Tracking stopped after landing", systemImage: "checkmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Button(role: .destructive) {
+                store.stopTracking()
+            } label: {
+                Label("Stop Tracking", systemImage: "stop.circle")
+                    .font(.system(.body, design: .rounded).weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
         }
-        .buttonStyle(.bordered)
     }
 
     // MARK: - Row helpers
