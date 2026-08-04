@@ -12,14 +12,14 @@ enum ScanTab: Hashable {
 }
 
 private struct RequestTrackTabKey: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
+    static let defaultValue: @Sendable () -> Void = {}
 }
 
 extension EnvironmentValues {
     /// Switches the root tab to Track, popping any pushed screen first. Set by
     /// `RootView`; used by the list's swipe action and the detail screen's
     /// track button to hand a callsign to the Track tab.
-    var requestTrackTab: () -> Void {
+    var requestTrackTab: @Sendable () -> Void {
         get { self[RequestTrackTabKey.self] }
         set { self[RequestTrackTabKey.self] = newValue }
     }
