@@ -369,7 +369,7 @@ final class FlightTrackStore {
     /// so polling should stop even before the next live poll confirms it.
     private func reconcileDeliveredAlerts() async {
         guard let flightNumber else { return }
-        let delivered = await notifier.deliveredAlerts(for: flightNumber.callsign)
+        let delivered = await notifier.deliveredAlerts(flightNumber.callsign)
         guard !delivered.isEmpty else { return }
         var state = alertState
         for alert in delivered { state.markFired(alert) }
