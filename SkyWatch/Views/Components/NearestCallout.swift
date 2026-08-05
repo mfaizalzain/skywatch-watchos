@@ -53,7 +53,23 @@ struct NearestCallout: View {
         .padding(.vertical, 4)
         .background(
             Capsule(style: .continuous)
-                .fill(Color.black.opacity(isLuminanceReduced ? 0.0 : 0.55))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Palette.dataCyan.opacity(isLuminanceReduced ? 0.04 : 0.14),
+                            Palette.dataCyan.opacity(isLuminanceReduced ? 0.02 : 0.07)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+        )
+        .overlay(
+            Capsule(style: .continuous)
+                .stroke(
+                    Palette.dataCyan.opacity(isLuminanceReduced ? 0.15 : 0.4),
+                    lineWidth: 0.75
+                )
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Nearest target")

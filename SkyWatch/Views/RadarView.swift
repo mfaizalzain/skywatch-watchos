@@ -66,11 +66,6 @@ struct RadarView: View {
                         onRetry: { Task { await store.refresh() } }
                     )
                     .padding(.horizontal, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.black.opacity(isLuminanceReduced ? 0 : 0.7))
-                            .padding(-8)
-                    )
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
@@ -217,7 +212,8 @@ private struct ScopeCanvas: View {
     let isLuminanceReduced: Bool
 
     var body: some View {
-        Canvas { context, _ in
+        Canvas { context, size in
+            drawBackdrop(in: context, size: size)
             drawRings(in: context)
             // Always-On drops to the minimum that still answers "is anything up there?"
             if !isLuminanceReduced {
@@ -227,6 +223,26 @@ private struct ScopeCanvas: View {
             drawCentre(in: context)
         }
         .accessibilityHidden(true)
+    }
+
+    /// A soft centre glow over true black: the scope reads as lit glass rather
+    /// than a flat disc. Skipped on Always-On so the OLED stays mostly off.
+    private func drawBackdrop(in context: GraphicsContext, size: CGSize) {
+        guard !isLuminanceReduced else { return }
+        let rect = CGRect(origin: .zero, size: size)
+        context.fill(
+            Path(rect),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Palette.dataCyan.opacity(0.10),
+                    Palette.dataCyan.opacity(0.02),
+                    .clear
+                ]),
+                center: geometry.center,
+                startRadius: 0,
+                endRadius: geometry.radius
+            )
+        )
     }
 
     private var ringColor: Color {
@@ -242,10 +258,19 @@ private struct ScopeCanvas: View {
                 width: radius * 2,
                 height: radius * 2
             )
+            let isOuter = fraction == 1.0
+            // A soft glow pass behind the outer ring anchors the scope.
+            if isOuter && !isLuminanceReduced {
+                context.stroke(
+                    Path(ellipseIn: rect),
+                    with: .color(ringColor.opacity(0.22)),
+                    lineWidth: 2.5
+                )
+            }
             context.stroke(
                 Path(ellipseIn: rect),
                 with: .color(ringColor),
-                lineWidth: fraction == 1.0 ? 1.0 : 0.5
+                lineWidth: isOuter ? 1.0 : 0.5
             )
 
             // Ring labels sit low-left, out of the way of the nearest-target callout.
@@ -260,6 +285,28 @@ private struct ScopeCanvas: View {
                     y: geometry.center.y - radius * CGFloat(cos(angle))
                 )
             )
+        }
+        drawCardinalTicks(in: context)
+    }
+
+    /// N/E/S/W ticks on the outer ring — compass furniture that rotates with
+    /// the scope, so north stays north in heading-up mode.
+    private func drawCardinalTicks(in context: GraphicsContext) {
+        guard !isLuminanceReduced else { return }
+        let outer = geometry.ringRadius(1.0)
+        let inner = outer - 5
+        for degrees in [0.0, 90.0, 180.0, 270.0] {
+            let relative = (degrees - geometry.rotation).radians
+            var path = Path()
+            path.move(to: CGPoint(
+                x: geometry.center.x + inner * CGFloat(sin(relative)),
+                y: geometry.center.y - inner * CGFloat(cos(relative))
+            ))
+            path.addLine(to: CGPoint(
+                x: geometry.center.x + outer * CGFloat(sin(relative)),
+                y: geometry.center.y - outer * CGFloat(cos(relative))
+            ))
+            context.stroke(path, with: .color(ringColor.opacity(0.6)), lineWidth: 1)
         }
     }
 
@@ -302,6 +349,13 @@ private struct ScopeCanvas: View {
         // position report at the edge of coverage is routine.
         let opacity = target.isFading ? 0.4 : 1.0
 
+        // Soft glow behind the glyph: a wider, faint fill in the same colour. One extra fill per
+        // blip is cheap, and it lifts the scope off the flat disc look.
+        if !isLuminanceReduced {
+            let halo = Path(ellipseIn: CGRect(x: position.x - 5.5, y: position.y - 5.5, width: 11, height: 11))
+            context.fill(halo, with: .color(color.opacity(opacity * 0.22)))
+        }
+
         if let track = target.aircraft.track {
             var path = Path()
             let length: CGFloat = 5
@@ -328,23 +382,48 @@ private struct ScopeCanvas: View {
         }
     }
 
+    /// The "you are here" marker: a crosshair + ring + dot, so the scope's
+    /// reference point reads as intentional rather than a speck of dust.
     private func drawCentre(in context: GraphicsContext) {
         let color = Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced)
-        let size: CGFloat = 3
-        let rect = CGRect(
-            x: geometry.center.x - size / 2,
-            y: geometry.center.y - size / 2,
-            width: size,
-            height: size
-        )
-        context.fill(Path(ellipseIn: rect), with: .color(color))
+        let c = geometry.center
+
+        if !isLuminanceReduced {
+            // Soft glow behind the whole marker.
+            let glow = Path(ellipseIn: CGRect(x: c.x - 6, y: c.y - 6, width: 12, height: 12))
+            context.fill(glow, with: .color(color.opacity(0.18)))
+        }
+
+        // Crosshair ticks.
+        for degrees in [0.0, 90.0, 180.0, 270.0] {
+            let relative = (degrees - geometry.rotation).radians
+            let inner: CGFloat = 4.5
+            let outer: CGFloat = 8
+            var tick = Path()
+            tick.move(to: CGPoint(
+                x: c.x + inner * CGFloat(sin(relative)),
+                y: c.y - inner * CGFloat(cos(relative))
+            ))
+            tick.addLine(to: CGPoint(
+                x: c.x + outer * CGFloat(sin(relative)),
+                y: c.y - outer * CGFloat(cos(relative))
+            ))
+            context.stroke(tick, with: .color(color.opacity(0.7)), lineWidth: 0.75)
+        }
+
+        // Ring and centre dot.
+        let ring = Path(ellipseIn: CGRect(x: c.x - 3, y: c.y - 3, width: 6, height: 6))
+        context.stroke(ring, with: .color(color.opacity(0.9)), lineWidth: 1)
+        let dot = Path(ellipseIn: CGRect(x: c.x - 1.25, y: c.y - 1.25, width: 2.5, height: 2.5))
+        context.fill(dot, with: .color(color))
     }
 }
 
 // MARK: - Sweep
 
 /// Not decoration: the sweep points where the device is facing, so the scope also answers "which
-/// way am I looking?". Under Reduce Motion it becomes a static tick with no animation.
+/// way am I looking?". Drawn as a classic radar beam — a bright leading edge with a fading wedge
+/// trail behind it. Under Reduce Motion it becomes a static tick with no animation.
 private struct SweepLine: View {
     let geometry: ScopeGeometry
     let headingDegrees: Double?
@@ -361,6 +440,38 @@ private struct SweepLine: View {
                 y: geometry.center.y - geometry.radius * CGFloat(cos(radians))
             )
 
+            if !isStatic {
+                // Fading wedge trail behind the leading edge — the classic
+                // radar beam. ~14° of arc (drawn as a chord triangle: at this
+                // angle the chord and the arc are visually identical, and a
+                // triangle can't get its sweep direction wrong).
+                let trailDegrees = 14.0
+                let trailRadians = (angle - trailDegrees).radians
+                let trailTip = CGPoint(
+                    x: geometry.center.x + geometry.radius * CGFloat(sin(trailRadians)),
+                    y: geometry.center.y - geometry.radius * CGFloat(cos(trailRadians))
+                )
+
+                var wedge = Path()
+                wedge.move(to: geometry.center)
+                wedge.addLine(to: trailTip)
+                wedge.addLine(to: tip)
+                wedge.closeSubpath()
+
+                context.fill(
+                    wedge,
+                    with: .linearGradient(
+                        Gradient(colors: [
+                            Palette.dataCyan.opacity(0.28),
+                            Palette.dataCyan.opacity(0.05)
+                        ]),
+                        startPoint: tip,
+                        endPoint: trailTip
+                    )
+                )
+            }
+
+            // Leading edge: a bright, slightly wider line.
             var path = Path()
             path.move(to: geometry.center)
             path.addLine(to: tip)
@@ -368,11 +479,11 @@ private struct SweepLine: View {
             context.stroke(
                 path,
                 with: .linearGradient(
-                    Gradient(colors: [Palette.dataCyan.opacity(0.05), Palette.dataCyan.opacity(0.7)]),
+                    Gradient(colors: [Palette.dataCyan.opacity(0.05), Palette.dataCyan.opacity(0.85)]),
                     startPoint: geometry.center,
                     endPoint: tip
                 ),
-                lineWidth: 1
+                lineWidth: isStatic ? 1 : 1.5
             )
         }
         .opacity(headingDegrees == nil ? 0 : 1)

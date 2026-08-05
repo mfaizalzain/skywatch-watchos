@@ -114,6 +114,10 @@ struct AircraftDetailView: View {
         }
         .frame(height: 70)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Palette.dataCyan.opacity(0.35), lineWidth: 0.75)
+        )
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -333,7 +337,8 @@ struct AircraftDetailView: View {
 
 // MARK: - Rows
 
-/// A labelled group. Renders nothing at all when every row inside it is absent.
+/// A labelled group rendered as a glass card. Renders nothing at all when
+/// every row inside it is absent.
 private struct DetailSection<Content: View>: View {
     let title: String
     let content: Content
@@ -344,11 +349,19 @@ private struct DetailSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title.uppercased())
                 .font(Typography.sectionHeader)
                 .foregroundStyle(Palette.dataCyan.opacity(0.8))
-            content
+                .padding(.leading, 2)
+            GlassCard(cornerRadius: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    content
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

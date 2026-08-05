@@ -118,6 +118,14 @@ enum FlightAlert: String, Sendable {
     case landed = "Flight has landed"
 }
 
+/// Whether the app may schedule the screen-off pickup alerts. Surfaced in the
+/// Track UI so a denied permission is visible rather than silent.
+enum NotificationPermission: Equatable, Sendable {
+    case unknown
+    case authorized
+    case denied
+}
+
 /// One-session alert bookkeeping: fires each milestone exactly once, in
 /// urgency order (landed > 15 > 30) so a fast descent never skips an alert.
 struct FlightAlertState: Equatable, Sendable {
@@ -146,6 +154,12 @@ struct FlightAlertState: Equatable, Sendable {
     var hasFired30: Bool { fired.contains(.thirtyMinutes) }
     var hasFired15: Bool { fired.contains(.fifteenMinutes) }
     var hasFiredLanded: Bool { fired.contains(.landed) }
+
+    /// Records that an alert fired from the notification system (while the app
+    /// was suspended). Reopening the app then won't replay it.
+    mutating func markFired(_ alert: FlightAlert) {
+        fired.insert(alert)
+    }
 }
 
 /// Pure math for the tracker — kept UI- and network-free so it can be tested.

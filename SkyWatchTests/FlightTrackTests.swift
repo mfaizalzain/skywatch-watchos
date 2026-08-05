@@ -102,6 +102,25 @@ struct FlightTrackTests {
         #expect(!state.hasFired30)
     }
 
+    @Test("markFired records an alert that fired from the notification system")
+    func markFiredRecordsDeliveredAlert() {
+        var state = FlightAlertState()
+        state.markFired(.landed)
+        #expect(state.hasFiredLanded)
+        // update() won't replay it
+        #expect(state.update(etaMinutes: nil, isLanded: true) == nil)
+    }
+
+    @Test("markFired is idempotent")
+    func markFiredIsIdempotent() {
+        var state = FlightAlertState()
+        state.markFired(.fifteenMinutes)
+        state.markFired(.fifteenMinutes)
+        #expect(state.hasFired15)
+        // still fires the other milestones
+        #expect(state.update(etaMinutes: 28, isLanded: false) == .thirtyMinutes)
+    }
+
     // MARK: - Live status
 
     @Test("Flight is live when airborne")

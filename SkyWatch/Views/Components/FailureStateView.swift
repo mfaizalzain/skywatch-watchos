@@ -118,6 +118,9 @@ struct FailureStateView: View {
             }
         }
         .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .glassCardBackground(cornerRadius: 12)
         .accessibilityElement(children: .combine)
     }
 

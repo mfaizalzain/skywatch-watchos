@@ -18,6 +18,10 @@ enum Palette {
     /// Emergency squawks and any active `emergency` field.
     static let warningRed = Color(red: 0xFF / 255, green: 0x45 / 255, blue: 0x3A / 255)
 
+    /// A live / landed / successfully completed state. Softer than the warning
+    /// colours — it means "this is working", never "pay attention to this".
+    static let successGreen = Color(red: 0x3D / 255, green: 0xE8 / 255, blue: 0x8A / 255)
+
     /// Primary numeric values.
     static let primaryWhite = Color(red: 0xF2 / 255, green: 0xF2 / 255, blue: 0xF7 / 255)
 

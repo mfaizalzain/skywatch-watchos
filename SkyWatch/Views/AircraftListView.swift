@@ -38,7 +38,9 @@ struct AircraftListView: View {
                         isPinned: settings.isPinned(target.id),
                         isLuminanceReduced: isLuminanceReduced
                     )
+                    .glassCardBackground(cornerRadius: 12)
                 }
+                .listRowBackground(Color.clear)
                 .swipeActions(edge: .leading) {
                     Button {
                         settings.togglePin(target.id)
@@ -78,7 +80,12 @@ struct AircraftListView: View {
             NavigationLink(value: Route.settings) {
                 Label("Settings", systemImage: "gearshape")
                     .font(Typography.label)
+                    .foregroundStyle(Palette.dataCyan)
+                    .padding(.vertical, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .glassCardBackground(cornerRadius: 12)
             }
+            .listRowBackground(Color.clear)
         }
         .listStyle(.carousel)
         .containerBackground(Palette.scopeBase, for: .navigation)

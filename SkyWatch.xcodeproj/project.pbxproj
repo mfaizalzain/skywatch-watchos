@@ -66,6 +66,7 @@
 		D6730CE87A606EEF98BA4A96 /* AeroFlightTests.swift in tests */ = {isa = PBXBuildFile; fileRef = CF3A6BA20E2AAC21B112CD48 /* AeroFlightTests.swift */; };
 		D97480A387A85076E058CE01 /* FlightTrack.swift in tests */ = {isa = PBXBuildFile; fileRef = 4F6FEFE1F235062BA1D17DFA /* FlightTrack.swift */; };
 		E27A77C25E58CD36FF0994AB /* AircraftResponse.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 75C809DA8E9E2A0CC387E5A8 /* AircraftResponse.swift */; };
+		E527E2782429090F54CEE226 /* Card.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 1DC9933E91F4FEFA0389F209 /* Card.swift */; };
 		E67D59653586B898A07E1762 /* Geodesy.swift in widget */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
 		F22B6E88AF4AFF2BADEB4BA3 /* Typography.swift in widget */ = {isa = PBXBuildFile; fileRef = 936B770F7CB201F82397C13A /* Typography.swift */; };
 		4581C7BC007749FD8877B3C7 /* SkyWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 421F511B2A0CBEB0819D8820 /* SkyWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -76,6 +77,7 @@
 
 /* Begin PBXFileReference section */
 		6310B04D64214F3E183A566E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		1DC9933E91F4FEFA0389F209 /* Card.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Card.swift"; sourceTree = "<group>"; };
 		3586B3FBD4D48B1A95804906 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Haptics.swift"; sourceTree = "<group>"; };
 		ECD9542C7CBCC676CBE7F162 /* Palette+Targets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Palette+Targets.swift"; sourceTree = "<group>"; };
 		A939F413633D6824EE0415F7 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Palette.swift"; sourceTree = "<group>"; };
@@ -135,6 +137,7 @@
 		94E2A5E85F9A4372D4D7D916 = {
 			isa = PBXGroup;
 			children = (
+				1DC9933E91F4FEFA0389F209 /* Card.swift */,
 				3586B3FBD4D48B1A95804906 /* Haptics.swift */,
 				ECD9542C7CBCC676CBE7F162 /* Palette+Targets.swift */,
 				A939F413633D6824EE0415F7 /* Palette.swift */,
@@ -295,6 +298,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E527E2782429090F54CEE226 /* Card.swift in Sources */,
 				CE180C287612654B616C08A4 /* Haptics.swift in Sources */,
 				3BDC405302F927E5A8D35F49 /* Palette+Targets.swift in Sources */,
 				00CAEAA66A22792FE285DC5F /* Palette.swift in Sources */,

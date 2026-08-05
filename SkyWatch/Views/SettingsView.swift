@@ -7,7 +7,7 @@ struct SettingsView: View {
         @Bindable var settings = store.settings
 
         List {
-            Section("Scan") {
+            Section {
                 Picker("Radius", selection: $settings.radius) {
                     ForEach(ScanRadius.allCases) { radius in
                         Text("\(Int(radius.nauticalMiles)) nm").tag(radius)
@@ -23,23 +23,29 @@ struct SettingsView: View {
                         Text(system.title).tag(system)
                     }
                 }
+            } header: {
+                sectionHeader("Scan")
             }
 
-            Section("Scope") {
+            Section {
                 Toggle("Heading up", isOn: $settings.isHeadingUp)
                 Toggle("Hide ground traffic", isOn: $settings.hidesGroundTraffic)
                 Toggle("Military only", isOn: $settings.showsMilitaryOnly)
                 Toggle("Include MLAT & estimated", isOn: $settings.includesUncertainTargets)
+            } header: {
+                sectionHeader("Scope")
             }
 
             Section {
                 Toggle("Proximity haptic", isOn: $settings.hapticAlertsEnabled)
+            } header: {
+                sectionHeader("Alerts")
             } footer: {
                 Text("Buzzes once per aircraft when one comes inside 3 nm below 8,000 ft.")
                     .font(Typography.smallLabel)
             }
 
-            Section("Data") {
+            Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Data from airplanes.live")
                         .font(Typography.label)
@@ -49,10 +55,15 @@ struct SettingsView: View {
                         .foregroundStyle(Palette.primaryWhite.opacity(0.7))
                     Link("airplanes.live", destination: URL(string: "https://airplanes.live")!)
                         .font(Typography.smallLabel)
+                        .tint(Palette.dataCyan)
                 }
                 .padding(.vertical, 2)
+            } header: {
+                sectionHeader("Data")
             }
         }
+        .tint(Palette.dataCyan)
+        .listRowBackground(Color.clear)
         .containerBackground(Palette.scopeBase, for: .navigation)
         .navigationTitle {
             Text("Settings").foregroundStyle(Palette.dataCyan)
@@ -63,6 +74,12 @@ struct SettingsView: View {
         .onChange(of: settings.showsMilitaryOnly) { _, _ in
             Task { await store.refresh() }
         }
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(Typography.sectionHeader)
+            .foregroundStyle(Palette.dataCyan.opacity(0.8))
     }
 }
 

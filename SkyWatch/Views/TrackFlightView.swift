@@ -58,7 +58,7 @@ struct TrackFlightView: View {
             if parseError {
                 Text("Enter a flight number like MH123 or MAS123")
                     .font(.caption2)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Palette.cautionAmber)
             }
 
             Button {
@@ -93,13 +93,13 @@ struct TrackFlightView: View {
                                 .font(.system(.body, design: .rounded).weight(.medium))
                             Text("\(airport.iata) · \(airport.name)")
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                         }
                         Spacer()
                         let current = store.airport ?? selectedAirport
                         if current == airport {
                             Image(systemName: "checkmark")
-                                .foregroundStyle(.tint)
+                                .foregroundStyle(Palette.dataCyan)
                         }
                     }
                 }
@@ -137,6 +137,9 @@ struct TrackFlightView: View {
             }
             .padding(.horizontal, 12)
         }
+        // Permission can change while tracking (enabled in the Watch app's
+        // settings) — re-read it so the hint reflects reality.
+        .task { await store.refreshNotificationPermission() }
     }
 
     private var headerRow: some View {
@@ -150,7 +153,7 @@ struct TrackFlightView: View {
                 if let airport = store.airport {
                     Text("arriving \(airport.iata) · \(airport.city)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                 }
             }
             Spacer()
@@ -167,22 +170,22 @@ struct TrackFlightView: View {
         if store.phase.isLive {
             HStack(spacing: 3) {
                 Circle()
-                    .fill(.green)
+                    .fill(Palette.successGreen)
                     .frame(width: 7, height: 7)
                 Text("LIVE")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Palette.successGreen)
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Capsule().fill(.green.opacity(0.15)))
+            .background(Capsule().fill(Palette.successGreen.opacity(0.15)))
         } else if store.phase != .idle {
             Text("NOT LIVE")
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.primaryWhite.opacity(0.5))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(Capsule().fill(.secondary.opacity(0.15)))
+                .background(Capsule().fill(Palette.primaryWhite.opacity(0.12)))
         }
     }
 
@@ -220,7 +223,7 @@ struct TrackFlightView: View {
                         .contentTransition(.numericText())
                     Text("to landing")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                 } else {
                     statusRow(icon: "airplane", title: "In the air",
                               detail: "Position known; ETA needs ground speed")
@@ -228,7 +231,7 @@ struct TrackFlightView: View {
                 if let distanceNM = store.distanceNM, distanceNM.isFinite {
                     Text("\(Int(distanceNM.rounded())) NM from \(store.airport?.iata ?? "airport")")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                 }
             case let .onGround(distance):
                 statusRow(icon: "airplane.arrival", title: "On the ground",
@@ -243,7 +246,7 @@ struct TrackFlightView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Palette.scopeBase.opacity(0.45)))
+        .glassCardBackground(cornerRadius: 14)
     }
 
     /// Official status from FlightAware (when the AeroAPI layer is active).
@@ -254,7 +257,7 @@ struct TrackFlightView: View {
                 if let aeroError = store.aeroError {
                     Label(aeroError, systemImage: "exclamationmark.triangle")
                         .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Palette.cautionAmber)
                 } else if let status = store.aeroStatus {
                     HStack(spacing: 4) {
                         Image(systemName: officialIcon(status))
@@ -266,19 +269,19 @@ struct TrackFlightView: View {
                     if let route = store.route {
                         Text(route)
                             .font(.system(.caption2, design: .monospaced).weight(.medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Palette.primaryWhite.opacity(0.75))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let gate = store.gate {
                         Text("Gate \(gate)\(store.terminal.map { " · Terminal \($0)" } ?? "")")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if let arrival = store.officialArrival {
                         Text("Arrives \(arrival.formatted(date: .omitted, time: .shortened))")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -286,7 +289,7 @@ struct TrackFlightView: View {
             .padding(.vertical, 6)
             .padding(.horizontal, 10)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Palette.scopeBase.opacity(0.3)))
+            .glassCardBackground(cornerRadius: 12)
         }
     }
 
@@ -303,8 +306,8 @@ struct TrackFlightView: View {
 
     private func officialColor(_ status: AeroStatus) -> Color {
         switch status {
-        case .landed, .arrived: .green
-        case .cancelled, .diverted: .red
+        case .landed, .arrived: Palette.successGreen
+        case .cancelled, .diverted: Palette.warningRed
         default: Palette.dataCyan
         }
     }
@@ -327,10 +330,18 @@ struct TrackFlightView: View {
             milestoneRow(title: "30 min to landing", fired: store.alertState.hasFired30)
             milestoneRow(title: "15 min to landing", fired: store.alertState.hasFired15)
             milestoneRow(title: "Landed", fired: store.alertState.hasFiredLanded)
+            if store.notificationPermission == .denied {
+                Label("Notifications are off — alerts won't fire while the watch screen is off. Enable them for this app in the Watch app's notification settings.", systemImage: "bell.slash")
+                    .font(.caption2)
+                    .foregroundStyle(Palette.cautionAmber)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
+            }
         }
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Palette.scopeBase.opacity(0.3)))
+        .glassCardBackground(cornerRadius: 12)
     }
 
     private var stopButton: some View {
@@ -338,7 +349,7 @@ struct TrackFlightView: View {
             if store.hasAutoStopped {
                 Label("Tracking stopped after landing", systemImage: "checkmark.circle.fill")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.successGreen)
             }
             Button(role: .destructive) {
                 store.stopTracking()
@@ -358,12 +369,13 @@ struct TrackFlightView: View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(.tint)
+                .foregroundStyle(Palette.dataCyan)
             Text(title)
                 .font(.system(.headline, design: .rounded))
+                .foregroundStyle(Palette.primaryWhite)
             Text(detail)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                 .multilineTextAlignment(.center)
         }
     }
@@ -371,15 +383,15 @@ struct TrackFlightView: View {
     private func milestoneRow(title: String, fired: Bool) -> some View {
         HStack {
             Image(systemName: fired ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(fired ? .green : .secondary)
+                .foregroundStyle(fired ? Palette.successGreen : Palette.primaryWhite.opacity(0.35))
                 .font(.caption)
             Text(title)
                 .font(.system(.caption, design: .rounded))
-                .foregroundStyle(fired ? .primary : .secondary)
+                .foregroundStyle(fired ? Palette.primaryWhite : Palette.primaryWhite.opacity(0.55))
             Spacer()
             Text(fired ? "alert sent" : "waiting")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(fired ? Palette.successGreen : Palette.primaryWhite.opacity(0.35))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 2)

@@ -23,6 +23,10 @@ final class FlightTrackStore {
     private(set) var alertState = FlightAlertState()
     /// Distance from the aircraft's last known position to the airport (NM).
     private(set) var distanceNM: Double?
+    /// Notification permission as last observed. Surfaced in the Track UI so
+    /// a denied permission — which silently disables screen-off alerts — is
+    /// visible instead of mysteriously "not working".
+    private(set) var notificationPermission: NotificationPermission = .unknown
 
     // MARK: AeroAPI official-status layer (optional — needs a build-injected key)
 
@@ -83,7 +87,20 @@ final class FlightTrackStore {
     func setActive(_ active: Bool) {
         isActive = active
         if active, flightNumber != nil, !hasAutoStopped {
-            startPolling()
+            // A scheduled alert may have fired while the app was suspended
+            // (that's the whole point of scheduling) — fold it into the alert
+            // state BEFORE the first poll so the UI and the live path don't
+            // fire it a second time, and stop polling outright if the flight
+            // has already landed.
+            Task {
+                await reconcileDeliveredAlerts()
+                // The flight may have landed while we were suspended: check
+                // FlightAware's official status on the very next poll instead
+                // of waiting out the 10-minute metered cadence.
+                lastAeroPoll = nil
+                guard isActive, flightNumber != nil, !hasAutoStopped else { return }
+                startPolling()
+            }
         } else {
             stopPolling()
         }
@@ -112,7 +129,10 @@ final class FlightTrackStore {
         if let previousCallsign {
             Task { await notifier.cancelAll(for: previousCallsign) }
         }
-        Task { await notifier.requestAuthorizationIfNeeded() }
+        Task {
+            await notifier.requestAuthorizationIfNeeded()
+            await refreshNotificationPermission()
+        }
         if isActive { startPolling() }
     }
 
@@ -318,32 +338,66 @@ final class FlightTrackStore {
     ///
     /// Called on every poll that knows an ETA: each call replaces the previous
     /// schedule with one built from the freshest numbers, so the alerts track
-    /// the flight rather than drifting with an old ETA. Only milestones that
-    /// are genuinely ahead are armed — once the ETA crosses a threshold the
-    /// instant-fire path (`fireAlertsIfNeeded`) owns it, so the two paths
-    /// never race on the same alert. Milestones already fired are never
-    /// re-armed.
+    /// the flight rather than drifting with an old ETA. The alert fires when
+    /// the ETA crosses the threshold; an ETA already *inside* the window is
+    /// armed for the 60 s floor so a flight tracked from 25 min out still gets
+    /// its alert after the screen goes off — the instant-fire path owns it
+    /// while the app is on screen, the scheduled one while it is not. The two
+    /// paths can't both deliver: a live fire cancels its scheduled twin
+    /// (shared identifier) first.
     private func rearmScheduledAlerts(etaMinutes: Double?) {
         guard let flightNumber else { return }
         let now = Date()
-        // Arm only when the milestone is at least a minute ahead, so the
-        // scheduled alert and the live-crossing fire can't both deliver.
-        let horizon = 1.0
 
-        if !alertState.hasFired30, let etaMinutes, etaMinutes.isFinite, etaMinutes > 30 + horizon {
-            let at = now.addingTimeInterval((etaMinutes - 30) * 60)
+        if !alertState.hasFired30, let etaMinutes, etaMinutes.isFinite {
+            let at = now.addingTimeInterval(max((etaMinutes - 30) * 60, 60))
             Task { await notifier.schedule(.thirtyMinutes, flight: flightNumber.callsign, at: at) }
         }
-        if !alertState.hasFired15, let etaMinutes, etaMinutes.isFinite, etaMinutes > 15 + horizon {
-            let at = now.addingTimeInterval((etaMinutes - 15) * 60)
+        if !alertState.hasFired15, let etaMinutes, etaMinutes.isFinite {
+            let at = now.addingTimeInterval(max((etaMinutes - 15) * 60, 60))
             Task { await notifier.schedule(.fifteenMinutes, flight: flightNumber.callsign, at: at) }
         }
-        if !alertState.hasFiredLanded, let officialArrival, officialArrival > now.addingTimeInterval(60) {
-            Task { await notifier.schedule(.landed, flight: flightNumber.callsign, at: officialArrival) }
+        if !alertState.hasFiredLanded, let officialArrival {
+            let at = max(officialArrival, now.addingTimeInterval(60))
+            Task { await notifier.schedule(.landed, flight: flightNumber.callsign, at: at) }
         }
     }
 
+    /// Marks any alert that fired from the notification system while the app
+    /// was suspended as fired, so returning to the app doesn't replay it. A
+    /// delivered landed alert also ends the pickup job: the flight has landed,
+    /// so polling should stop even before the next live poll confirms it.
+    private func reconcileDeliveredAlerts() async {
+        guard let flightNumber else { return }
+        let delivered = await notifier.deliveredAlerts(for: flightNumber.callsign)
+        guard !delivered.isEmpty else { return }
+        var state = alertState
+        for alert in delivered { state.markFired(alert) }
+        alertState = state
+        if delivered.contains(.landed) {
+            hasAutoStopped = true
+            stopPolling()
+        }
+    }
+
+    /// Reads the current notification permission so the Track UI can tell the
+    /// user when screen-off alerts are impossible (denied) before they rely on
+    /// them.
+    func refreshNotificationPermission() async {
+        notificationPermission = await notifier.permissionStatus()
+    }
+
     private func fireAlertsIfNeeded(isLanded: Bool) {
+        // Landed is the end of the pickup job regardless of whether the landed
+        // alert is new or already fired (e.g. a scheduled notification that
+        // fired while the app was suspended): stop polling so nothing keeps
+        // hitting the APIs, but leave the final state on screen. The user
+        // clears it with Stop Tracking or starts a new flight.
+        if isLanded {
+            hasAutoStopped = true
+            stopPolling()
+        }
+
         let eta: Double?
         if case let .inAir(etaMinutes) = phase { eta = etaMinutes } else { eta = nil }
         guard let alert = alertState.update(etaMinutes: eta, isLanded: isLanded) else { return }
@@ -361,14 +415,6 @@ final class FlightTrackStore {
         // identifier, so this also prevents a duplicate when both paths run).
         Task { await notifier.cancel(alert, flight: flightNumber.callsign) }
         Task { await notifier.fire(alert, flight: flightNumber.callsign) }
-
-        // Landed is the end of the pickup job: stop polling so nothing keeps
-        // hitting the APIs, but leave the final state on screen. The user
-        // clears it with Stop Tracking or starts a new flight.
-        if alert == .landed {
-            hasAutoStopped = true
-            stopPolling()
-        }
     }
 
     // MARK: - Helpers
@@ -392,6 +438,16 @@ final class FlightTrackStore {
 /// Thin wrapper around `UNUserNotificationCenter` so the store stays testable.
 struct FlightNotifier: Sendable {
     var requestAuthorization: @Sendable () async -> Bool = { await FlightNotifier.defaultRequest() }
+    /// Current notification permission (for the Track UI's permission hint).
+    var permissionStatus: @Sendable () async -> NotificationPermission = {
+        await FlightNotifier.defaultPermissionStatus()
+    }
+    /// Which of the three alerts are sitting in the delivered-notification
+    /// center for a flight — i.e. fired from the system while we were
+    /// suspended. Used on foreground to fold them into the alert state.
+    var deliveredAlerts: @Sendable (String) async -> [FlightAlert] = { flight in
+        await FlightNotifier.defaultDeliveredAlerts(flight: flight)
+    }
     var fireAlert: @Sendable (FlightAlert, String) async -> Void = { alert, flight in
         await FlightNotifier.defaultFire(alert, flight: flight)
     }
@@ -447,6 +503,29 @@ struct FlightNotifier: Sendable {
 
     private static func identifier(_ alert: FlightAlert, flight: String) -> String {
         "flight-alert-\(flight)-\(alert.rawValue)"
+    }
+
+    private static func defaultPermissionStatus() async -> NotificationPermission {
+        let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        switch status {
+        case .authorized, .provisional, .ephemeral:
+            return .authorized
+        case .denied:
+            return .denied
+        default:
+            return .unknown
+        }
+    }
+
+    private static func defaultDeliveredAlerts(flight: String) async -> [FlightAlert] {
+        let center = UNUserNotificationCenter.current()
+        let delivered = await center.deliveredNotifications()
+        let prefix = "flight-alert-\(flight)-"
+        return delivered.compactMap { notification in
+            let id = notification.request.identifier
+            guard id.hasPrefix(prefix) else { return nil }
+            return FlightAlert(rawValue: String(id.dropFirst(prefix.count)))
+        }
     }
 
     private static func defaultFire(_ alert: FlightAlert, flight: String) async {
