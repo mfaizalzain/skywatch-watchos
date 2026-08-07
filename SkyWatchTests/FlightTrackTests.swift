@@ -86,6 +86,28 @@ struct FlightTrackTests {
         #expect(!state.hasFired30)
     }
 
+    @Test("15-minute alert suppresses the 30-minute one for the rest of the session")
+    func fires15Suppresses30() {
+        var state = FlightAlertState()
+        // Tracking starts with the flight already inside the 15-minute window:
+        // the 15-minute alert fires, and a later "30 minutes to landing" would
+        // be nonsense — it must never follow.
+        #expect(state.update(etaMinutes: 12, isLanded: false) == .fifteenMinutes)
+        #expect(state.update(etaMinutes: 10, isLanded: false) == nil)
+        #expect(!state.hasFired30)
+    }
+
+    @Test("markFired 15-minute alert suppresses 30")
+    func markFired15Suppresses30() {
+        var state = FlightAlertState()
+        // The 15-minute alert fired from the notification system while the app
+        // was suspended; a resumed poll inside the 30-minute window must not
+        // replay a now-meaningless 30-minute alert.
+        state.markFired(.fifteenMinutes)
+        #expect(state.update(etaMinutes: 10, isLanded: false) == nil)
+        #expect(!state.hasFired30)
+    }
+
     @Test("Landed fires once")
     func landedFiresOnce() {
         var state = FlightAlertState()
@@ -102,6 +124,18 @@ struct FlightTrackTests {
         #expect(!state.hasFired30)
     }
 
+    @Test("Landed suppresses the ETA alerts that come after it")
+    func landedSuppressesLaterETAAlerts() {
+        var state = FlightAlertState()
+        #expect(state.update(etaMinutes: 12, isLanded: true) == .landed)
+        // Official landed verdict, then a poll that still reports a finite ETA:
+        // no heads-up may follow the landing.
+        #expect(state.update(etaMinutes: 20, isLanded: false) == nil)
+        #expect(state.update(etaMinutes: 8, isLanded: false) == nil)
+        #expect(!state.hasFired15)
+        #expect(!state.hasFired30)
+    }
+
     @Test("markFired records an alert that fired from the notification system")
     func markFiredRecordsDeliveredAlert() {
         var state = FlightAlertState()
@@ -114,11 +148,11 @@ struct FlightTrackTests {
     @Test("markFired is idempotent")
     func markFiredIsIdempotent() {
         var state = FlightAlertState()
-        state.markFired(.fifteenMinutes)
-        state.markFired(.fifteenMinutes)
-        #expect(state.hasFired15)
-        // still fires the other milestones
-        #expect(state.update(etaMinutes: 28, isLanded: false) == .thirtyMinutes)
+        state.markFired(.thirtyMinutes)
+        state.markFired(.thirtyMinutes)
+        #expect(state.hasFired30)
+        // still fires the more urgent milestone as the flight gets closer
+        #expect(state.update(etaMinutes: 12, isLanded: false) == .fifteenMinutes)
     }
 
     // MARK: - Live status

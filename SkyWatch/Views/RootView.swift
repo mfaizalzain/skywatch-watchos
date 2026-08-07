@@ -5,7 +5,9 @@ enum Route: Hashable {
     case settings
 }
 
-enum ScanTab: Hashable {
+/// String-backed so the selected tab can persist across launches — a user
+/// living on the Track tab during a pickup gets it back when the app reopens.
+enum ScanTab: String, Hashable {
     case radar
     case list
     case track
@@ -31,7 +33,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
-    @State private var tab: ScanTab = .radar
+    @AppStorage("selectedTab") private var tab: ScanTab = .radar
     @State private var path = NavigationPath()
 
     var body: some View {

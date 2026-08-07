@@ -7,6 +7,10 @@ import os
 @MainActor
 @Observable
 final class ScanStore {
+    /// The one store for the whole app. Both `SkyWatchApp` and the Siri /
+    /// Shortcuts intents act on this instance.
+    static let shared = ScanStore()
+
     // MARK: Published state
 
     private(set) var targets: [TrackedTarget] = []
@@ -288,8 +292,13 @@ final class ScanStore {
         for index in targets.indices {
             let target = targets[index]
             guard !target.hasAlerted else { continue }
-            guard target.distanceNM < 3 else { continue }
-            guard let feet = target.aircraft.altBaro?.feetValue, feet < 8_000 else { continue }
+            guard ProximityPolicy.shouldAlert(
+                distanceNM: target.distanceNM,
+                altitudeFeet: target.aircraft.altBaro?.feetValue.map(Double.init),
+                isPinned: settings.isPinned(target.id),
+                distanceThresholdNM: settings.proximityDistance.nauticalMiles,
+                altitudeThresholdFeet: settings.proximityAltitude.feet
+            ) else { continue }
             guard target.position.source.isPrecise, !target.position.isStale else { continue }
 
             targets[index].hasAlerted = true

@@ -14,6 +14,7 @@
 		0967A56D378449C915B3978A /* Geodesy.swift in tests */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
 		0DF79AADD25D474C957F11EB /* TrackedTarget.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
 		115ADD311B08D8897A1B22FC /* RateLimiter.swift in tests */ = {isa = PBXBuildFile; fileRef = 3411E7E1106CFF80C248B329 /* RateLimiter.swift */; };
+		1A26DA45E54125B09AE6175C /* ProximityPolicyTests.swift in tests */ = {isa = PBXBuildFile; fileRef = DD40A76B75444E1C57DAE0D7 /* ProximityPolicyTests.swift */; };
 		1AE4BBA524C4EC84F86F69E2 /* AeroRouteCache.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 5F172B301BF6680B6FFD5193 /* AeroRouteCache.swift */; };
 		1B2212DB53FAD2FB9D5C6A88 /* TrackedTarget.swift in tests */ = {isa = PBXBuildFile; fileRef = 83CC38F13606EF7BB5EADCA8 /* TrackedTarget.swift */; };
 		1BD38E5D06C272AEE5D749AE /* Settings.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 2BB599019BCAE70AFA876BA9 /* Settings.swift */; };
@@ -61,6 +62,7 @@
 		C58B5B8B0DBAE1A65C663A25 /* RateLimiter.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 3411E7E1106CFF80C248B329 /* RateLimiter.swift */; };
 		C900084D318584B1DCCA172B /* Airports.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 45BB5CB514B9E3DD3F52BB9F /* Airports.swift */; };
 		CA1CCB25AC28EABBBA80FB00 /* PreviewData.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 6081900E8E9F3F5DC98613B2 /* PreviewData.swift */; };
+		CA8B2F05B1F864D677AD43FF /* SkyWatchIntents.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 8436A44BE8F87D8C41419277 /* SkyWatchIntents.swift */; };
 		CE180C287612654B616C08A4 /* Haptics.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 3586B3FBD4D48B1A95804906 /* Haptics.swift */; };
 		D029F649711CC26D3B7948BE /* Palette.swift in widget */ = {isa = PBXBuildFile; fileRef = A939F413633D6824EE0415F7 /* Palette.swift */; };
 		D6730CE87A606EEF98BA4A96 /* AeroFlightTests.swift in tests */ = {isa = PBXBuildFile; fileRef = CF3A6BA20E2AAC21B112CD48 /* AeroFlightTests.swift */; };
@@ -69,6 +71,7 @@
 		E527E2782429090F54CEE226 /* Card.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 1DC9933E91F4FEFA0389F209 /* Card.swift */; };
 		E67D59653586B898A07E1762 /* Geodesy.swift in widget */ = {isa = PBXBuildFile; fileRef = 3F869AD92E754D733B99A624 /* Geodesy.swift */; };
 		F22B6E88AF4AFF2BADEB4BA3 /* Typography.swift in widget */ = {isa = PBXBuildFile; fileRef = 936B770F7CB201F82397C13A /* Typography.swift */; };
+		FE0A3D4068347513B633E86B /* EmergencyBanner.swift in watchapp */ = {isa = PBXBuildFile; fileRef = 0882D63C801EDCE34D5950E7 /* EmergencyBanner.swift */; };
 		4581C7BC007749FD8877B3C7 /* SkyWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 421F511B2A0CBEB0819D8820 /* SkyWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ABD9461ECEBCA085A62338E8 /* SkyWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 32F557046B8B0982A542FAC0 /* SkyWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -84,6 +87,7 @@
 		936B770F7CB201F82397C13A /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Typography.swift"; sourceTree = "<group>"; };
 		3F869AD92E754D733B99A624 /* Geodesy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Geodesy.swift"; sourceTree = "<group>"; };
 		1D8DD87C103FFDC54F83974A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
+		8436A44BE8F87D8C41419277 /* SkyWatchIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SkyWatchIntents.swift"; sourceTree = "<group>"; };
 		56BAD99CAA3A0FD55C6B8D1F /* AeroFlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AeroFlight.swift"; sourceTree = "<group>"; };
 		7BD55B7E9E21223542B9D228 /* Aircraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Aircraft.swift"; sourceTree = "<group>"; };
 		75C809DA8E9E2A0CC387E5A8 /* AircraftResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AircraftResponse.swift"; sourceTree = "<group>"; };
@@ -107,6 +111,7 @@
 		2B210940163CCE68D69E5C0E /* AircraftDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AircraftDetailView.swift"; sourceTree = "<group>"; };
 		33836BF3409EF91C361297AC /* AircraftListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AircraftListView.swift"; sourceTree = "<group>"; };
 		2CBD0FD19CA092769C2413B0 /* Badges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Badges.swift"; sourceTree = "<group>"; };
+		0882D63C801EDCE34D5950E7 /* EmergencyBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EmergencyBanner.swift"; sourceTree = "<group>"; };
 		7BFE00036930C6A911254B2C /* FailureStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FailureStateView.swift"; sourceTree = "<group>"; };
 		34F361B15166C3445F3FECCD /* NearestCallout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NearestCallout.swift"; sourceTree = "<group>"; };
 		67D893774DA7DCE074FD16D7 /* ScopeGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScopeGeometry.swift"; sourceTree = "<group>"; };
@@ -121,6 +126,7 @@
 		D21670697EA60BAB9DF7D19C /* FlightTrackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FlightTrackTests.swift"; sourceTree = "<group>"; };
 		447F231D9A46F734AEDE95E6 /* GeodesyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GeodesyTests.swift"; sourceTree = "<group>"; };
 		775A259280ABE4DC05CADA5F /* MergeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MergeTests.swift"; sourceTree = "<group>"; };
+		DD40A76B75444E1C57DAE0D7 /* ProximityPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProximityPolicyTests.swift"; sourceTree = "<group>"; };
 		74D7132F7132E3E2C630BEAC /* RateLimiterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RateLimiterTests.swift"; sourceTree = "<group>"; };
 		223D3BCC0D79CBFCF77673A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		114DB1DE390EC5DB421A57CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
@@ -152,6 +158,14 @@
 				3F869AD92E754D733B99A624 /* Geodesy.swift */,
 			);
 			path = "Geo";
+			sourceTree = "<group>";
+		};
+		7BA6705A2D2855B498C25A73 = {
+			isa = PBXGroup;
+			children = (
+				8436A44BE8F87D8C41419277 /* SkyWatchIntents.swift */,
+			);
+			path = "Intents";
 			sourceTree = "<group>";
 		};
 		AB7144F532D08324B02BE136 = {
@@ -204,6 +218,7 @@
 			isa = PBXGroup;
 			children = (
 				2CBD0FD19CA092769C2413B0 /* Badges.swift */,
+				0882D63C801EDCE34D5950E7 /* EmergencyBanner.swift */,
 				7BFE00036930C6A911254B2C /* FailureStateView.swift */,
 				34F361B15166C3445F3FECCD /* NearestCallout.swift */,
 				67D893774DA7DCE074FD16D7 /* ScopeGeometry.swift */,
@@ -231,6 +246,7 @@
 			children = (
 				94E2A5E85F9A4372D4D7D916 /* Design */,
 				41D05856CED9B5145B3CF563 /* Geo */,
+				7BA6705A2D2855B498C25A73 /* Intents */,
 				AB7144F532D08324B02BE136 /* Models */,
 				82577F0B9CE1FE2EA76B10CF /* Preview Content */,
 				B4624CD4C62C1FB5A596D36B /* Services */,
@@ -253,6 +269,7 @@
 				D21670697EA60BAB9DF7D19C /* FlightTrackTests.swift */,
 				447F231D9A46F734AEDE95E6 /* GeodesyTests.swift */,
 				775A259280ABE4DC05CADA5F /* MergeTests.swift */,
+				DD40A76B75444E1C57DAE0D7 /* ProximityPolicyTests.swift */,
 				74D7132F7132E3E2C630BEAC /* RateLimiterTests.swift */,
 			);
 			path = "SkyWatchTests";
@@ -304,6 +321,7 @@
 				00CAEAA66A22792FE285DC5F /* Palette.swift in Sources */,
 				3DC2B4CA4D2A620A5FDC4C4D /* Typography.swift in Sources */,
 				B56BAAA99EF0D4CF61F8D455 /* Geodesy.swift in Sources */,
+				CA8B2F05B1F864D677AD43FF /* SkyWatchIntents.swift in Sources */,
 				2B3CF2B1CA294E95D51F4A49 /* AeroFlight.swift in Sources */,
 				341A55CD7C483C8256D22DD0 /* Aircraft.swift in Sources */,
 				E27A77C25E58CD36FF0994AB /* AircraftResponse.swift in Sources */,
@@ -325,6 +343,7 @@
 				3E038C7C2370250728FAFC8C /* AircraftDetailView.swift in Sources */,
 				03E173A985C3F69915C62D68 /* AircraftListView.swift in Sources */,
 				53E76F098384BA47EE5C23BA /* Badges.swift in Sources */,
+				FE0A3D4068347513B633E86B /* EmergencyBanner.swift in Sources */,
 				AFD08A183F395AB82E4A734C /* FailureStateView.swift in Sources */,
 				63350949D68DFBD8B51BBDBF /* NearestCallout.swift in Sources */,
 				2F650B29562A78562CAC19B2 /* ScopeGeometry.swift in Sources */,
@@ -360,6 +379,7 @@
 				30C126679CBD9B2FFA4095CE /* FlightTrackTests.swift in Sources */,
 				825CDD555B96B10970BFDB3E /* GeodesyTests.swift in Sources */,
 				3D8FA5BBA517EAA393A93AAA /* MergeTests.swift in Sources */,
+				1A26DA45E54125B09AE6175C /* ProximityPolicyTests.swift in Sources */,
 				49A9857A09CBB5F05497FA67 /* RateLimiterTests.swift in Sources */,
 				0967A56D378449C915B3978A /* Geodesy.swift in Sources */,
 				405B05FF63ED970412CB75DF /* AeroFlight.swift in Sources */,

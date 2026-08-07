@@ -19,6 +19,13 @@ struct AircraftListView: View {
 
     var body: some View {
         List {
+            if let emergency = store.visibleTargets.first(where: { $0.aircraft.isAlerting }) {
+                NavigationLink(value: emergency.id) {
+                    EmergencyBanner(target: emergency, isLuminanceReduced: isLuminanceReduced)
+                }
+                .listRowBackground(Color.clear)
+            }
+
             if let failure {
                 FailureStateView(
                     state: failure,
@@ -169,6 +176,23 @@ struct AircraftRow: View {
                 if let speed = target.aircraft.groundSpeed {
                     Text(Units.speed(knots: speed, system: unitSystem).value)
                         .font(Typography.smallValue)
+                        .foregroundStyle(Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced))
+                }
+
+                // A pass that's genuinely imminent earns a glanceable countdown —
+                // the "look up in 45 seconds" moment. Quiet cyan, same as the
+                // other secondary data, and only inside a minute.
+                if let approach = target.closestApproach,
+                   approach.timeToClosestApproach > 0,
+                   approach.timeToClosestApproach <= 60 {
+                    Image(systemName: "clock")
+                        .font(.system(size: 8))
+                        .foregroundStyle(Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced))
+                        .accessibilityHidden(true)
+                    Text("\(Int(approach.timeToClosestApproach.rounded()))s")
+                        .font(Typography.smallValue)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .foregroundStyle(Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced))
                 }
 

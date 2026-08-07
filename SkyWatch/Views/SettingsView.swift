@@ -38,10 +38,22 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Proximity haptic", isOn: $settings.hapticAlertsEnabled)
+                if settings.hapticAlertsEnabled {
+                    Picker("Distance", selection: $settings.proximityDistance) {
+                        ForEach(ProximityDistance.allCases) { distance in
+                            Text("\(Int(distance.nauticalMiles)) nm").tag(distance)
+                        }
+                    }
+                    Picker("Altitude", selection: $settings.proximityAltitude) {
+                        ForEach(ProximityAltitude.allCases) { altitude in
+                            Text("\(Int(altitude.feet)) ft").tag(altitude)
+                        }
+                    }
+                }
             } header: {
                 sectionHeader("Alerts")
             } footer: {
-                Text("Buzzes once per aircraft when one comes inside 3 nm below 8,000 ft.")
+                Text("Buzzes once per aircraft inside \(Int(settings.proximityDistance.nauticalMiles)) nm below \(Int(settings.proximityAltitude.feet)) ft. Pinned aircraft alert from twice the distance.")
                     .font(Typography.smallLabel)
             }
 

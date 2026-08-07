@@ -128,6 +128,9 @@ enum NotificationPermission: Equatable, Sendable {
 
 /// One-session alert bookkeeping: fires each milestone exactly once, in
 /// urgency order (landed > 15 > 30) so a fast descent never skips an alert.
+/// A more urgent milestone that has already fired suppresses every less urgent
+/// one for the rest of the session — a flight tracked from inside the
+/// 15-minute window must never later announce "30 minutes to landing".
 struct FlightAlertState: Equatable, Sendable {
     private(set) var fired: Set<FlightAlert> = []
 
@@ -139,8 +142,15 @@ struct FlightAlertState: Equatable, Sendable {
             fired.insert(.landed)
             return .landed
         }
+
+        // The landed verdict, or an already-fired 15-minute heads-up, makes
+        // the 30-minute one meaningless — never fall through to it. This is
+        // what keeps a flight tracked from inside the 15-minute window from
+        // announcing "30 minutes to landing" after the 15-minute alert.
+        guard !fired.contains(.landed), !fired.contains(.fifteenMinutes) else { return nil }
         guard let etaMinutes, etaMinutes.isFinite else { return nil }
-        if etaMinutes <= 15, !fired.contains(.fifteenMinutes) {
+
+        if etaMinutes <= 15 {
             fired.insert(.fifteenMinutes)
             return .fifteenMinutes
         }

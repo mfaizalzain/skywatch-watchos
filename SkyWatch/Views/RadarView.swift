@@ -8,7 +8,6 @@ struct RadarView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var crownPosition: Double = 0
-    @State private var hasSyncedCrown = false
 
     private var settings: SettingsStore { store.settings }
 
@@ -72,7 +71,7 @@ struct RadarView: View {
         }
         .ignoresSafeArea()
         .overlay(alignment: .bottom) { calloutOverlay }
-        .overlay(alignment: .top) { statusOverlay }
+        .overlay(alignment: .top) { topOverlay }
         .focusable()
         .digitalCrownRotation(
             $crownPosition,
@@ -109,13 +108,34 @@ struct RadarView: View {
     @ViewBuilder
     private var calloutOverlay: some View {
         if failure == nil, let nearest = store.nearest {
-            NearestCallout(
-                target: nearest,
-                unitSystem: settings.unitSystem,
-                deviceHeading: deviceHeading
-            )
+            // The callout is the most obvious thing on the scope — make it the
+            // way into the nearest aircraft's detail screen too.
+            NavigationLink(value: nearest.id) {
+                NearestCallout(
+                    target: nearest,
+                    unitSystem: settings.unitSystem,
+                    deviceHeading: deviceHeading
+                )
+            }
+            .buttonStyle(.plain)
             .padding(.bottom, 2)
         }
+    }
+
+    /// Emergency banner above the status row: an alerting aircraft gets a
+    /// red, tappable banner instead of being just another red glyph.
+    @ViewBuilder
+    private var topOverlay: some View {
+        VStack(spacing: 4) {
+            if let emergency = store.visibleTargets.first(where: { $0.aircraft.isAlerting }) {
+                NavigationLink(value: emergency.id) {
+                    EmergencyBanner(target: emergency, isLuminanceReduced: isLuminanceReduced)
+                }
+                .buttonStyle(.plain)
+            }
+            statusOverlay
+        }
+        .padding(.top, 2)
     }
 
     /// Two things worth knowing at a glance and nothing else: that the position is approximate, and
@@ -130,6 +150,17 @@ struct RadarView: View {
             if store.error != nil, let age = store.dataAge, age > 30 {
                 Badge(text: Units.age(seconds: age), color: Palette.cautionAmber, isLuminanceReduced: isLuminanceReduced)
                     .accessibilityLabel("Data is \(Units.age(seconds: age)) old")
+            } else if store.error == nil, store.hasEverLoaded,
+                      let age = store.dataAge,
+                      age > Double(isLuminanceReduced ? 120 : settings.refreshInterval.seconds) {
+                // Nothing wrong — just an honest stamp that the scope is on
+                // the slow Always-On cadence or a refresh hasn't landed yet.
+                Badge(
+                    text: Units.age(seconds: age),
+                    color: Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced),
+                    isLuminanceReduced: isLuminanceReduced
+                )
+                .accessibilityLabel("Data is \(Units.age(seconds: age)) old")
             }
         }
         .padding(.top, 2)
@@ -169,15 +200,16 @@ struct RadarView: View {
     // MARK: - Crown
 
     private func syncCrownToSettings() {
-        guard !hasSyncedCrown else { return }
-        hasSyncedCrown = true
-        if let index = ScanRadius.allCases.firstIndex(of: settings.radius) {
-            crownPosition = Double(index)
-        }
+        // The crown is the range control: whenever the scope appears — first
+        // launch, tab switch, or popping back from Settings after changing the
+        // radius there — point it at the current radius.
+        guard let index = ScanRadius.allCases.firstIndex(of: settings.radius) else { return }
+        let target = Double(index)
+        guard crownPosition != target else { return }
+        crownPosition = target
     }
 
     private func crownDidMove(to value: Double) {
-        guard hasSyncedCrown else { return }
         let index = min(max(Int(value.rounded()), 0), ScanRadius.allCases.count - 1)
         let radius = ScanRadius.allCases[index]
         guard radius != settings.radius else { return }
@@ -219,7 +251,7 @@ private struct ScopeCanvas: View {
             if !isLuminanceReduced {
                 for target in targets { drawTrail(for: target, in: context) }
             }
-            for target in targets { drawBlip(for: target, in: context) }
+            drawBlips(in: context)
             drawCentre(in: context)
         }
         .accessibilityHidden(true)
@@ -332,11 +364,39 @@ private struct ScopeCanvas: View {
         }
     }
 
-    private func drawBlip(for target: TrackedTarget, in context: GraphicsContext) {
-        let position = geometry.point(
-            bearingDegrees: target.bearingDegrees,
-            distanceNM: target.distanceNM
-        )
+    /// Targets whose glyphs would overlap on screen are drawn as one glyph
+    /// with a count — stacked approaches and formation flying otherwise paint
+    /// over each other into a single unreadable dot.
+    private func drawBlips(in context: GraphicsContext) {
+        let clusterRadius: CGFloat = 7
+        let positioned = targets.map { target in
+            (
+                target: target,
+                point: geometry.point(bearingDegrees: target.bearingDegrees, distanceNM: target.distanceNM)
+            )
+        }
+
+        var clusters: [[(target: TrackedTarget, point: CGPoint)]] = []
+        for item in positioned {
+            if let index = clusters.firstIndex(where: { cluster in
+                cluster.contains { $0.point.distance(to: item.point) <= clusterRadius }
+            }) {
+                clusters[index].append(item)
+            } else {
+                clusters.append([item])
+            }
+        }
+
+        for cluster in clusters {
+            if cluster.count == 1, let single = cluster.first {
+                drawBlip(for: single.target, at: single.point, in: context)
+            } else {
+                drawCluster(cluster, in: context)
+            }
+        }
+    }
+
+    private func drawBlip(for target: TrackedTarget, at position: CGPoint, in context: GraphicsContext) {
         let color = Palette.dimmed(
             Palette.target(
                 target,
@@ -382,6 +442,50 @@ private struct ScopeCanvas: View {
         }
     }
 
+    /// One glyph for a stack of targets. Colour follows the most important
+    /// member (emergency > pinned/nearest > uncertain); the count makes the
+    /// pile visible.
+    private func drawCluster(
+        _ cluster: [(target: TrackedTarget, point: CGPoint)],
+        in context: GraphicsContext
+    ) {
+        let primary = cluster.map(\.target).min { severity($0) < severity($1) } ?? cluster[0].target
+        let point = geometry.point(bearingDegrees: primary.bearingDegrees, distanceNM: primary.distanceNM)
+        let color = Palette.dimmed(
+            Palette.target(
+                primary,
+                isSelected: primary.id == nearestID,
+                isPinned: pinned.contains(primary.id)
+            ),
+            isLuminanceReduced: isLuminanceReduced
+        )
+        // A fading member makes the whole cluster tentative.
+        let opacity = cluster.contains(where: { $0.target.isFading }) ? 0.5 : 1.0
+
+        if !isLuminanceReduced {
+            let halo = Path(ellipseIn: CGRect(x: point.x - 8.5, y: point.y - 8.5, width: 17, height: 17))
+            context.fill(halo, with: .color(color.opacity(opacity * 0.2)))
+        }
+        let disc = Path(ellipseIn: CGRect(x: point.x - 6, y: point.y - 6, width: 12, height: 12))
+        context.fill(disc, with: .color(color.opacity(opacity)))
+
+        var label = context.resolve(
+            Text("\(cluster.count)")
+                .font(.system(size: 8, weight: .bold, design: .rounded).monospacedDigit())
+        )
+        label.shading = .color(Palette.scopeBase)
+        context.draw(label, at: point)
+    }
+
+    /// Lowest number wins the cluster colour: emergency, then pinned/nearest,
+    /// then uncertain positions, then ordinary white.
+    private func severity(_ target: TrackedTarget) -> Int {
+        if target.aircraft.isAlerting { return 0 }
+        if target.id == nearestID || pinned.contains(target.id) { return 1 }
+        if target.position.needsCaution { return 2 }
+        return 3
+    }
+
     /// The "you are here" marker: a crosshair + ring + dot, so the scope's
     /// reference point reads as intentional rather than a speck of dust.
     private func drawCentre(in context: GraphicsContext) {
@@ -416,6 +520,12 @@ private struct ScopeCanvas: View {
         context.stroke(ring, with: .color(color.opacity(0.9)), lineWidth: 1)
         let dot = Path(ellipseIn: CGRect(x: c.x - 1.25, y: c.y - 1.25, width: 2.5, height: 2.5))
         context.fill(dot, with: .color(color))
+    }
+}
+
+private extension CGPoint {
+    func distance(to other: CGPoint) -> CGFloat {
+        hypot(x - other.x, y - other.y)
     }
 }
 

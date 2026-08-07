@@ -12,6 +12,10 @@ import os
 @MainActor
 @Observable
 final class FlightTrackStore {
+    /// The one store for the whole app, shared with the Siri / Shortcuts
+    /// intents so "track flight MH123" lands in the same tab the UI shows.
+    static let shared = FlightTrackStore()
+
     // MARK: Published state
 
     private(set) var phase: FlightPhase = .idle
@@ -41,6 +45,13 @@ final class FlightTrackStore {
     /// Route: departure airport → destination airport, e.g. "SIN → KUL".
     /// Built from FlightAware's origin/destination; nil without the layer.
     private(set) var route: String?
+    /// Scheduled departure time from FlightAware (when the layer is active).
+    /// Answers "has this flight left yet?" for the searching / not-found
+    /// states, which otherwise cannot tell "not departed" from "out of
+    /// coverage".
+    private(set) var scheduledDeparture: Date?
+    /// How far along the route the flight is, from FlightAware (0–100).
+    private(set) var progressPercent: Int?
     /// A human-readable problem with the AeroAPI layer (bad key, no quota…).
     private(set) var aeroError: String?
     /// Set when the landed alert fires: polling stops (the pickup job is done)
@@ -53,6 +64,13 @@ final class FlightTrackStore {
             guard oldValue != isLuminanceReduced, pollTask != nil else { return }
             restartPolling()
         }
+    }
+
+    /// When the flight is due to arrive, derived from the live ETA measured at
+    /// the last poll. Nil until both position and ground speed are known.
+    var estimatedArrival: Date? {
+        guard case let .inAir(etaMinutes) = phase, let etaMinutes, etaMinutes.isFinite else { return nil }
+        return (lastUpdated ?? Date()).addingTimeInterval(etaMinutes * 60)
     }
 
     // MARK: Dependencies
@@ -122,6 +140,8 @@ final class FlightTrackStore {
         self.gate = nil
         self.officialArrival = nil
         self.route = nil
+        self.scheduledDeparture = nil
+        self.progressPercent = nil
         self.aeroError = nil
         self.lastAeroPoll = nil
         self.hasAutoStopped = false
@@ -152,6 +172,8 @@ final class FlightTrackStore {
         gate = nil
         officialArrival = nil
         route = nil
+        scheduledDeparture = nil
+        progressPercent = nil
         aeroError = nil
         hasAutoStopped = false
     }
@@ -195,6 +217,16 @@ final class FlightTrackStore {
         guard let flightNumber else { return }
         isLoading = true
         defer { isLoading = false }
+
+        // A scheduled alert may have fired since the last poll (e.g. it came
+        // due while the screen was on and the delegate presented it). Fold any
+        // delivered alerts into the state so the live path below doesn't fire
+        // the same milestone a second time, and stop outright if the flight
+        // has landed.
+        await reconcileDeliveredAlerts()
+        guard flightNumber == self.flightNumber else { return }
+        // A delivered landed alert ended the pickup job — nothing left to poll.
+        guard !hasAutoStopped else { return }
 
         // AeroAPI is metered: refresh at most once per ten minutes, and only
         // when a key is present in the build. Runs even before the arrival
@@ -286,6 +318,8 @@ final class FlightTrackStore {
             gate = flight.destination?.gate
             officialArrival = flight.gateArrival
             route = Self.routeLabel(origin: flight.origin, destination: flight.destination)
+            scheduledDeparture = flight.departure
+            progressPercent = flight.progressPercent
             aeroError = nil
 
             // Auto-detect the arrival airport from FlightAware's destination
@@ -338,29 +372,36 @@ final class FlightTrackStore {
     ///
     /// Called on every poll that knows an ETA: each call replaces the previous
     /// schedule with one built from the freshest numbers, so the alerts track
-    /// the flight rather than drifting with an old ETA. The alert fires when
-    /// the ETA crosses the threshold; an ETA already *inside* the window is
-    /// armed for the 60 s floor so a flight tracked from 25 min out still gets
-    /// its alert after the screen goes off — the instant-fire path owns it
-    /// while the app is on screen, the scheduled one while it is not. The two
-    /// paths can't both deliver: a live fire cancels its scheduled twin
-    /// (shared identifier) first.
+    /// the flight rather than drifting with an old ETA. A heads-up is armed
+    /// only while its threshold is still *ahead* of the current ETA: once the
+    /// ETA is inside the window the instant-fire path owns the alert on this
+    /// same poll, and arming a stale "30 minutes to landing" for 60 s later
+    /// would deliver it after the user has already heard the 15-minute one.
+    /// The two paths can't both deliver: a live fire cancels its scheduled
+    /// twin (shared identifier) first.
     private func rearmScheduledAlerts(etaMinutes: Double?) {
         guard let flightNumber else { return }
         let now = Date()
 
-        if !alertState.hasFired30, let etaMinutes, etaMinutes.isFinite {
+        if !alertState.hasFired30, let etaMinutes, etaMinutes.isFinite, etaMinutes > 30 {
             let at = now.addingTimeInterval(max((etaMinutes - 30) * 60, 60))
             Task { await notifier.schedule(.thirtyMinutes, flight: flightNumber.callsign, at: at) }
         }
-        if !alertState.hasFired15, let etaMinutes, etaMinutes.isFinite {
+        if !alertState.hasFired15, let etaMinutes, etaMinutes.isFinite, etaMinutes > 15 {
             let at = now.addingTimeInterval(max((etaMinutes - 15) * 60, 60))
             Task { await notifier.schedule(.fifteenMinutes, flight: flightNumber.callsign, at: at) }
         }
         if !alertState.hasFiredLanded, let officialArrival {
             let at = max(officialArrival, now.addingTimeInterval(60))
-            Task { await notifier.schedule(.landed, flight: flightNumber.callsign, at: at) }
+            Task { await notifier.schedule(.landed, flight: flightNumber.callsign, at: at, detail: arrivalDetail) }
         }
+    }
+
+    /// " at gate B12" / " at terminal 1", for the landed notification body.
+    private var arrivalDetail: String? {
+        if let gate { return " at gate \(gate)" }
+        if let terminal { return " at terminal \(terminal)" }
+        return nil
     }
 
     /// Marks any alert that fired from the notification system while the app
@@ -412,9 +453,20 @@ final class FlightTrackStore {
             Haptics.flightMilestone()
         }
         // A live fire supersedes the armed future-dated one (they share an
-        // identifier, so this also prevents a duplicate when both paths run).
+        // identifier), and any *less urgent* armed milestone is now
+        // meaningless — the 15-minute alert must not leave a "30 minutes"
+        // notification behind to fire later.
         Task { await notifier.cancel(alert, flight: flightNumber.callsign) }
-        Task { await notifier.fire(alert, flight: flightNumber.callsign) }
+        switch alert {
+        case .landed:
+            Task { await notifier.cancel(.thirtyMinutes, flight: flightNumber.callsign) }
+            Task { await notifier.cancel(.fifteenMinutes, flight: flightNumber.callsign) }
+        case .fifteenMinutes:
+            Task { await notifier.cancel(.thirtyMinutes, flight: flightNumber.callsign) }
+        case .thirtyMinutes:
+            break
+        }
+        Task { await notifier.fire(alert, flight: flightNumber.callsign, detail: arrivalDetail) }
     }
 
     // MARK: - Helpers
@@ -448,11 +500,11 @@ struct FlightNotifier: Sendable {
     var deliveredAlerts: @Sendable (String) async -> [FlightAlert] = { flight in
         await FlightNotifier.defaultDeliveredAlerts(flight: flight)
     }
-    var fireAlert: @Sendable (FlightAlert, String) async -> Void = { alert, flight in
-        await FlightNotifier.defaultFire(alert, flight: flight)
+    var fireAlert: @Sendable (FlightAlert, String, String?) async -> Void = { alert, flight, detail in
+        await FlightNotifier.defaultFire(alert, flight: flight, detail: detail)
     }
-    var scheduleAlert: @Sendable (FlightAlert, String, Date) async -> Void = { alert, flight, at in
-        await FlightNotifier.defaultSchedule(alert, flight: flight, at: at)
+    var scheduleAlert: @Sendable (FlightAlert, String, Date, String?) async -> Void = { alert, flight, at, detail in
+        await FlightNotifier.defaultSchedule(alert, flight: flight, at: at, detail: detail)
     }
     var cancelScheduled: @Sendable (FlightAlert, String) async -> Void = { alert, flight in
         await FlightNotifier.defaultCancel(alert, flight: flight)
@@ -465,15 +517,17 @@ struct FlightNotifier: Sendable {
         _ = await requestAuthorization()
     }
 
-    func fire(_ alert: FlightAlert, flight: String) async {
-        await fireAlert(alert, flight)
+    /// Fires immediately. `detail` is an optional " at gate B12" suffix for
+    /// the landed alert's body.
+    func fire(_ alert: FlightAlert, flight: String, detail: String? = nil) async {
+        await fireAlert(alert, flight, detail)
     }
 
     /// Arms a future-dated alert: the notification system delivers it even if
     /// the app is backgrounded or suspended, so a pickup alert still fires
     /// while the watch sits on the charger.
-    func schedule(_ alert: FlightAlert, flight: String, at date: Date) async {
-        await scheduleAlert(alert, flight, date)
+    func schedule(_ alert: FlightAlert, flight: String, at date: Date, detail: String? = nil) async {
+        await scheduleAlert(alert, flight, date, detail)
     }
 
     /// Removes a previously armed alert (re-armed with a new ETA, or fired
@@ -528,10 +582,10 @@ struct FlightNotifier: Sendable {
         }
     }
 
-    private static func defaultFire(_ alert: FlightAlert, flight: String) async {
+    private static func defaultFire(_ alert: FlightAlert, flight: String, detail: String?) async {
         let content = UNMutableNotificationContent()
         content.title = "\(flight) — \(alert.rawValue)"
-        content.body = alert.body
+        content.body = alert.body(detail: detail)
         content.sound = .default
         // Same identifier as the scheduled variant: a live fire replaces any
         // still-pending scheduled one for this milestone.
@@ -543,10 +597,10 @@ struct FlightNotifier: Sendable {
         try? await UNUserNotificationCenter.current().add(request)
     }
 
-    private static func defaultSchedule(_ alert: FlightAlert, flight: String, at date: Date) async {
+    private static func defaultSchedule(_ alert: FlightAlert, flight: String, at date: Date, detail: String?) async {
         let content = UNMutableNotificationContent()
         content.title = "\(flight) — \(alert.rawValue)"
-        content.body = alert.body
+        content.body = alert.body(detail: detail)
         content.sound = .default
         // watchOS refuses triggers under 60 s; clamp so a caller racing the
         // clock can't produce an invalid request.
@@ -582,6 +636,21 @@ extension FlightAlert {
         case .thirtyMinutes: "Flight lands in about 30 minutes. Time to head out."
         case .fifteenMinutes: "Flight lands in about 15 minutes."
         case .landed: "Flight has landed. Go pick them up!"
+        }
+    }
+
+    /// Notification body with an arrival detail (terminal/gate) appended where
+    /// it matters. `detail` is the "at gate B12"-style suffix; the 30/15
+    /// heads-ups ignore it.
+    func body(detail: String?) -> String {
+        switch self {
+        case .landed:
+            if let detail {
+                return "Flight has landed\(detail). Go pick them up!"
+            }
+            return body
+        default:
+            return body
         }
     }
 }

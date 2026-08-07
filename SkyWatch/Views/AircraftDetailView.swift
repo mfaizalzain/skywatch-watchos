@@ -60,6 +60,13 @@ struct AircraftDetailView: View {
             Text(aircraft?.displayName ?? "Aircraft")
                 .foregroundStyle(Palette.targetMagenta)
         }
+        .toolbar {
+            if let aircraft {
+                ToolbarItem(placement: .primaryAction) {
+                    ShareLink(item: shareText(for: aircraft))
+                }
+            }
+        }
         .task(id: hex) {
             await pollDetail()
         }
@@ -325,13 +332,38 @@ struct AircraftDetailView: View {
     /// still running behind this screen, so anything faster would be two requests fighting for the
     /// same 1.2 s slot.
     private func pollDetail() async {
+        var consecutiveMisses = 0
         while !Task.isCancelled {
             if let updated = await store.refreshDetail(hex: hex) {
                 refreshedAircraft = updated
+                consecutiveMisses = 0
+            } else {
+                // The feed no longer knows this aircraft — powered down, or
+                // flown out of coverage. Stop asking for a ghost; the last
+                // values stay on screen. (Errors count too, but a transient
+                // outage clears before six misses at this cadence.)
+                consecutiveMisses += 1
+                if consecutiveMisses >= 6 { return }
             }
             let interval = store.settings.refreshInterval.seconds * 2
             try? await Task.sleep(for: .seconds(interval))
         }
+    }
+
+    /// A compact one-line summary for the share sheet: "MAS123 · KUL → SYD ·
+    /// 4.2 nm · 12,000 ft — SkyWatch".
+    private func shareText(for aircraft: Aircraft) -> String {
+        var parts = [aircraft.displayName]
+        if let route {
+            parts.append(route)
+        }
+        if let target {
+            parts.append(Units.distance(nauticalMiles: target.distanceNM, system: settings.unitSystem).combined)
+            if let altitude = aircraft.altBaro {
+                parts.append(Units.altitude(altitude, system: settings.unitSystem).combined)
+            }
+        }
+        return parts.joined(separator: " · ") + " — SkyWatch"
     }
 }
 

@@ -12,13 +12,33 @@ actor AeroRouteCache {
     static let shared = AeroRouteCache()
 
     private let client: AeroAPIClient?
-    private var cache: [String: (route: String, fetchedAt: Date)] = [:]
+    private var cache: [String: CacheEntry]
+    private let defaults: UserDefaults
     /// Routes don't change while an aircraft is in the air; an hour keeps
     /// repeated views free without ever showing a stale route.
-    private let ttl: TimeInterval = 60 * 60
+    private static let ttl: TimeInterval = 60 * 60
+    private static let storageKey = "aeroRouteCache"
 
-    init(client: AeroAPIClient? = AeroAPIClient.hasConfiguredKey ? AeroAPIClient() : nil) {
+    /// A route and when it was fetched, flattened so the cache can cross
+    /// launches in UserDefaults.
+    private struct CacheEntry: Codable, Sendable {
+        let route: String
+        let fetchedAt: Date
+    }
+
+    init(
+        client: AeroAPIClient? = AeroAPIClient.hasConfiguredKey ? AeroAPIClient() : nil,
+        defaults: UserDefaults = .standard
+    ) {
         self.client = client
+        self.defaults = defaults
+        // Load what survived from the last launch, dropping anything past its
+        // hour — the memory cache stays the same size, but repeat visits after
+        // an app restart no longer cost a metered query.
+        let now = Date()
+        let stored = defaults.data(forKey: Self.storageKey)
+            .flatMap { try? JSONDecoder().decode([String: CacheEntry].self, from: $0) } ?? [:]
+        cache = stored.filter { now.timeIntervalSince($0.value.fetchedAt) < Self.ttl }
     }
 
     /// "KUL → SYD"-style route for a callsign (e.g. "MAS123"), or nil when
@@ -27,7 +47,7 @@ actor AeroRouteCache {
         guard let client else { return nil }
         let key = callsign.uppercased()
 
-        if let cached = cache[key], Date().timeIntervalSince(cached.fetchedAt) < ttl {
+        if let cached = cache[key], Date().timeIntervalSince(cached.fetchedAt) < Self.ttl {
             return cached.route
         }
 
@@ -35,7 +55,13 @@ actor AeroRouteCache {
         guard let origin = flight.origin, let destination = flight.destination else { return nil }
 
         let route = "\(origin.displayLabel) → \(destination.displayLabel)"
-        cache[key] = (route, Date())
+        cache[key] = CacheEntry(route: route, fetchedAt: Date())
+        persist()
         return route
+    }
+
+    private func persist() {
+        guard let data = try? JSONEncoder().encode(cache) else { return }
+        defaults.set(data, forKey: Self.storageKey)
     }
 }

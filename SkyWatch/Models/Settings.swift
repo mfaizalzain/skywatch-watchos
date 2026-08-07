@@ -46,6 +46,27 @@ enum RefreshInterval: Int, CaseIterable, Sendable, Identifiable, Codable {
     }
 }
 
+/// How close an aircraft must get before the proximity haptic fires.
+enum ProximityDistance: Double, CaseIterable, Sendable, Identifiable, Codable {
+    case one = 1
+    case three = 3
+    case five = 5
+    case ten = 10
+
+    var id: Double { rawValue }
+    var nauticalMiles: Double { rawValue }
+}
+
+/// How low an aircraft must be before the proximity haptic fires.
+enum ProximityAltitude: Double, CaseIterable, Sendable, Identifiable, Codable {
+    case fourThousand = 4_000
+    case eightThousand = 8_000
+    case twelveThousand = 12_000
+
+    var id: Double { rawValue }
+    var feet: Double { rawValue }
+}
+
 /// User settings, persisted to the shared App Group defaults so the widget reads the same values.
 ///
 /// Stored properties rather than `@AppStorage`: `ScanStore` reacts to a radius change from outside
@@ -93,8 +114,23 @@ final class SettingsStore {
         didSet { defaults.set(hapticAlertsEnabled, forKey: Key.hapticAlerts) }
     }
 
+    var proximityDistance: ProximityDistance {
+        didSet { defaults.set(proximityDistance.rawValue, forKey: Key.proximityDistance) }
+    }
+
+    var proximityAltitude: ProximityAltitude {
+        didSet { defaults.set(proximityAltitude.rawValue, forKey: Key.proximityAltitude) }
+    }
+
     var pinnedHexes: Set<String> {
         didSet { defaults.set(Array(pinnedHexes).sorted(), forKey: Key.pinned) }
+    }
+
+    /// Arrival airports the user has picked for flight tracking, most recent
+    /// first. Surfaced as a "Recent" section at the top of the Track tab's
+    /// picker.
+    var recentAirportCodes: [String] {
+        didSet { defaults.set(recentAirportCodes, forKey: Key.recentAirports) }
     }
 
     init(defaults: UserDefaults? = nil) {
@@ -109,7 +145,10 @@ final class SettingsStore {
         showsMilitaryOnly = store.object(forKey: Key.militaryOnly) as? Bool ?? false
         includesUncertainTargets = store.object(forKey: Key.includeUncertainTargets) as? Bool ?? true
         hapticAlertsEnabled = store.object(forKey: Key.hapticAlerts) as? Bool ?? false
+        proximityDistance = (store.object(forKey: Key.proximityDistance) as? Double).flatMap(ProximityDistance.init(rawValue:)) ?? .three
+        proximityAltitude = (store.object(forKey: Key.proximityAltitude) as? Double).flatMap(ProximityAltitude.init(rawValue:)) ?? .eightThousand
         pinnedHexes = Set(store.stringArray(forKey: Key.pinned) ?? [])
+        recentAirportCodes = store.stringArray(forKey: Key.recentAirports) ?? []
     }
 
     func isPinned(_ hex: String) -> Bool { pinnedHexes.contains(hex) }
@@ -122,6 +161,14 @@ final class SettingsStore {
         }
     }
 
+    /// Records an arrival airport in the Track tab's recents — most recent
+    /// first, deduplicated, capped at five.
+    func recordAirport(_ airport: Airport) {
+        var codes = recentAirportCodes.filter { $0 != airport.iata }
+        codes.insert(airport.iata, at: 0)
+        recentAirportCodes = Array(codes.prefix(5))
+    }
+
     private enum Key {
         static let radius = "radiusNM"
         static let refreshInterval = "refreshInterval"
@@ -131,6 +178,9 @@ final class SettingsStore {
         static let militaryOnly = "militaryOnly"
         static let includeUncertainTargets = "includeUncertainTargets"
         static let hapticAlerts = "hapticAlerts"
+        static let proximityDistance = "proximityDistance"
+        static let proximityAltitude = "proximityAltitude"
         static let pinned = "pinnedHexes"
+        static let recentAirports = "recentAirports"
     }
 }

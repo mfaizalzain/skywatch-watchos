@@ -7,8 +7,8 @@ import SwiftUI
 struct SkyWatchApp: App {
     /// One store for the whole app. Created here rather than in a view so its polling task outlives
     /// any individual screen — and stops the moment the scene does.
-    @State private var store = ScanStore()
-    @State private var flightStore = FlightTrackStore()
+    @State private var store = ScanStore.shared
+    @State private var flightStore = FlightTrackStore.shared
 
     init() {
         // Without this, flight alerts are suppressed while the app is on

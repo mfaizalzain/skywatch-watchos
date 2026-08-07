@@ -4,11 +4,13 @@ import SwiftUI
 /// alerts at 30 min / 15 min / landed.
 struct TrackFlightView: View {
     @Environment(FlightTrackStore.self) private var store
+    @Environment(ScanStore.self) private var scanStore
 
     @State private var flightNumberText = ""
     @State private var selectedAirport: Airport?
     @State private var pickerPresented = false
     @State private var parseError = false
+    @State private var searchText = ""
 
     var body: some View {
         Group {
@@ -78,32 +80,25 @@ struct TrackFlightView: View {
 
     private var airportPicker: some View {
         NavigationStack {
-            List(Airport.common) { airport in
-                Button {
-                    if store.flightNumber == nil {
-                        selectedAirport = airport
-                    } else {
-                        store.selectAirport(airport)
-                    }
-                    pickerPresented = false
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(airport.city)
-                                .font(.system(.body, design: .rounded).weight(.medium))
-                            Text("\(airport.iata) · \(airport.name)")
-                                .font(.caption2)
-                                .foregroundStyle(Palette.primaryWhite.opacity(0.6))
-                        }
-                        Spacer()
-                        let current = store.airport ?? selectedAirport
-                        if current == airport {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Palette.dataCyan)
+            List {
+                // Recents only while browsing; a search result list stands alone.
+                if searchText.trimmed.isEmpty {
+                    let recents = recentAirports
+                    if !recents.isEmpty {
+                        Section("Recent") {
+                            ForEach(recents) { airport in
+                                airportRow(airport)
+                            }
                         }
                     }
                 }
+                Section(searchText.trimmed.isEmpty ? "All" : "Results") {
+                    ForEach(filteredAirports) { airport in
+                        airportRow(airport)
+                    }
+                }
             }
+            .searchable(text: $searchText, prompt: "City or code")
             .navigationTitle("Arrival Airport")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -114,6 +109,49 @@ struct TrackFlightView: View {
         .presentationDetents([.medium, .large])
     }
 
+    private func airportRow(_ airport: Airport) -> some View {
+        Button {
+            if store.flightNumber == nil {
+                selectedAirport = airport
+            } else {
+                store.selectAirport(airport)
+            }
+            scanStore.settings.recordAirport(airport)
+            pickerPresented = false
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(airport.city)
+                        .font(.system(.body, design: .rounded).weight(.medium))
+                    Text("\(airport.iata) · \(airport.name)")
+                        .font(.caption2)
+                        .foregroundStyle(Palette.primaryWhite.opacity(0.6))
+                }
+                Spacer()
+                let current = store.airport ?? selectedAirport
+                if current == airport {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Palette.dataCyan)
+                }
+            }
+        }
+    }
+
+    /// Airports matching the search text, by IATA code, city or name.
+    private var filteredAirports: [Airport] {
+        let query = searchText.trimmed.lowercased()
+        guard !query.isEmpty else { return Airport.common }
+        return Airport.common.filter {
+            $0.iata.lowercased().contains(query)
+                || $0.city.lowercased().contains(query)
+                || $0.name.lowercased().contains(query)
+        }
+    }
+
+    private var recentAirports: [Airport] {
+        scanStore.settings.recentAirportCodes.compactMap { Airport.find(iata: $0) }
+    }
+
     private func startTracking() {
         guard let parsed = FlightNumber.parse(flightNumberText) else {
             parseError = true
@@ -122,6 +160,9 @@ struct TrackFlightView: View {
         parseError = false
         // Airport is optional: nil means "auto-detect from FlightAware".
         store.startTracking(number: parsed, airport: selectedAirport)
+        if let airport = selectedAirport {
+            scanStore.settings.recordAirport(airport)
+        }
     }
 
     // MARK: - Tracking
@@ -214,6 +255,11 @@ struct TrackFlightView: View {
                 } else {
                     statusRow(icon: "magnifyingglass", title: "Searching for flight…",
                               detail: "Waiting for the aircraft to appear in the feed")
+                    if let departureText = departureStatusText {
+                        Text(departureText)
+                            .font(.caption2)
+                            .foregroundStyle(Palette.primaryWhite.opacity(0.6))
+                    }
                 }
             case let .inAir(eta):
                 if let eta {
@@ -224,6 +270,13 @@ struct TrackFlightView: View {
                     Text("to landing")
                         .font(.caption)
                         .foregroundStyle(Palette.primaryWhite.opacity(0.6))
+                    // Live-derived clock time; the official card shows
+                    // FlightAware's estimate when the layer is active.
+                    if store.officialArrival == nil, let arrival = store.estimatedArrival {
+                        Text("Arrives \(arrival.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption2)
+                            .foregroundStyle(Palette.primaryWhite.opacity(0.6))
+                    }
                 } else {
                     statusRow(icon: "airplane", title: "In the air",
                               detail: "Position known; ETA needs ground speed")
@@ -233,6 +286,22 @@ struct TrackFlightView: View {
                         .font(.caption2)
                         .foregroundStyle(Palette.primaryWhite.opacity(0.6))
                 }
+                if let progress = store.progressPercent, (0...100).contains(progress) {
+                    HStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .stroke(Palette.dataCyan.opacity(0.2), lineWidth: 3)
+                            Circle()
+                                .trim(from: 0, to: CGFloat(progress) / 100)
+                                .stroke(Palette.dataCyan, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        .frame(width: 14, height: 14)
+                        Text("\(progress)% of route")
+                            .font(.caption2)
+                            .foregroundStyle(Palette.primaryWhite.opacity(0.6))
+                    }
+                }
             case let .onGround(distance):
                 statusRow(icon: "airplane.arrival", title: "On the ground",
                           detail: distanceText(distance))
@@ -240,8 +309,13 @@ struct TrackFlightView: View {
                 statusRow(icon: "checkmark.seal.fill", title: "Landed",
                           detail: "Aircraft powered down near the airport")
             case .notFound:
-                statusRow(icon: "questionmark.circle", title: "Not live right now",
-                          detail: "Flight not in the feed — not departed, out of coverage, or already landed")
+                if let departureText = departureStatusText {
+                    statusRow(icon: "clock", title: "Not live right now",
+                              detail: "\(departureText) — may be out of coverage or already landed")
+                } else {
+                    statusRow(icon: "questionmark.circle", title: "Not live right now",
+                              detail: "Flight not in the feed — not departed, out of coverage, or already landed")
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -405,6 +479,17 @@ struct TrackFlightView: View {
         return "\(rounded)m"
     }
 
+    /// "Scheduled departure 18:40" or "Departed 2h ago", from FlightAware's
+    /// schedule — lets the "not live" states tell "hasn't left yet" apart
+    /// from "out of coverage / already landed".
+    private var departureStatusText: String? {
+        guard let departure = store.scheduledDeparture else { return nil }
+        if departure > Date() {
+            return "Scheduled departure \(departure.formatted(date: .omitted, time: .shortened))"
+        }
+        return "Departed \(Units.age(seconds: Date().timeIntervalSince(departure))) ago"
+    }
+
     private func distanceText(_ distance: Double?) -> String {
         guard let distance, distance.isFinite else {
             return "Position unknown"
@@ -418,4 +503,5 @@ struct TrackFlightView: View {
 #Preview("Track Flight") {
     TrackFlightView()
         .environment(FlightTrackStore())
+        .environment(ScanStore.previewStore(targets: []))
 }

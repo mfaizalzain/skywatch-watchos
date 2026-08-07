@@ -1,5 +1,28 @@
 import Foundation
 
+/// Decides whether a target earns the proximity haptic. Kept pure so the
+/// threshold rules are testable without a store or a device.
+enum ProximityPolicy {
+    /// Pinned targets alert from twice the chosen distance — they're the ones
+    /// the wearer is actually waiting for.
+    static let pinnedMultiplier = 2.0
+
+    static func shouldAlert(
+        distanceNM: Double,
+        altitudeFeet: Double?,
+        isPinned: Bool,
+        distanceThresholdNM: Double,
+        altitudeThresholdFeet: Double
+    ) -> Bool {
+        // Strictly inside: at the threshold itself the target is not yet
+        // "within" the alerting volume.
+        let threshold = isPinned ? distanceThresholdNM * pinnedMultiplier : distanceThresholdNM
+        guard distanceNM < threshold else { return false }
+        guard let altitudeFeet, altitudeFeet < altitudeThresholdFeet else { return false }
+        return true
+    }
+}
+
 /// One point in a blip's tail.
 struct TrailPoint: Sendable, Hashable {
     let coordinate: Coordinate
