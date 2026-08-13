@@ -170,6 +170,53 @@ struct FlightAlertState: Equatable, Sendable {
     mutating func markFired(_ alert: FlightAlert) {
         fired.insert(alert)
     }
+
+    /// The future-dated alerts to (re)arm for the current flight state. The
+    /// tracker's poll loop schedules these with `UNUserNotificationCenter`, so
+    /// the pickup alerts keep firing even after the watch screen turns off and
+    /// the app is suspended — the notification system delivers them, not the app.
+    ///
+    /// Mirrors `update(_:isLanded:)`: an alert that has already fired is never
+    /// re-armed, and a fired 15-minute (or landed) alert suppresses the
+    /// 30-minute one for the rest of the session — even if the ETA later drifts
+    /// back out of the window. The landed alert is armed from the official
+    /// arrival when one is known, and from the live ETA otherwise: without that
+    /// fallback a landing while the screen is off would never notify unless the
+    /// optional FlightAware layer was configured.
+    func scheduledAlerts(etaMinutes: Double?, officialArrival: Date?, now: Date = Date()) -> [ScheduledAlert] {
+        var plans: [ScheduledAlert] = []
+
+        if !hasFired30, !hasFired15, !hasFiredLanded, let etaMinutes, etaMinutes.isFinite, etaMinutes > 30 {
+            plans.append(ScheduledAlert(
+                alert: .thirtyMinutes,
+                fireAt: now.addingTimeInterval(max((etaMinutes - 30) * 60, 60))
+            ))
+        }
+        if !hasFired15, !hasFiredLanded, let etaMinutes, etaMinutes.isFinite, etaMinutes > 15 {
+            plans.append(ScheduledAlert(
+                alert: .fifteenMinutes,
+                fireAt: now.addingTimeInterval(max((etaMinutes - 15) * 60, 60))
+            ))
+        }
+        if !hasFiredLanded {
+            if let officialArrival {
+                plans.append(ScheduledAlert(alert: .landed, fireAt: max(officialArrival, now.addingTimeInterval(60))))
+            } else if let etaMinutes, etaMinutes.isFinite {
+                // No FlightAware arrival to arm against — schedule the landing
+                // alert off the live ETA so the landing buzz still fires while
+                // the app is suspended at pickup time.
+                plans.append(ScheduledAlert(alert: .landed, fireAt: now.addingTimeInterval(max(etaMinutes * 60, 60))))
+            }
+        }
+        return plans
+    }
+}
+
+/// A future-dated pickup alert: the milestone plus the moment the notification
+/// system should deliver it.
+struct ScheduledAlert: Equatable, Sendable {
+    let alert: FlightAlert
+    let fireAt: Date
 }
 
 /// Pure math for the tracker — kept UI- and network-free so it can be tested.

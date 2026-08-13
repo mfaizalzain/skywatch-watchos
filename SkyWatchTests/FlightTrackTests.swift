@@ -213,4 +213,62 @@ struct FlightTrackTests {
             #expect((-180...180).contains(airport.coordinate.longitude), "\(airport.iata) lon")
         }
     }
+
+    // MARK: - Scheduled alert arming (the screen-off path)
+
+    @Test("Landed alert is armed from the live ETA when no official arrival exists")
+    func armsLandedFromLiveETA() {
+        let state = FlightAlertState()
+        let now = Date()
+        let plans = state.scheduledAlerts(etaMinutes: 25, officialArrival: nil, now: now)
+
+        // The screen-off backstop: without an AeroAPI key there is no official arrival, so the
+        // landing alert is armed for `now + ETA` and fires from the notification system even
+        // while the app is suspended.
+        let landed = plans.first { $0.alert == .landed }
+        #expect(landed != nil)
+        #expect(abs(landed!.fireAt.timeIntervalSince(now) - 25 * 60) < 1,
+                "landed alert armed for now + ETA")
+
+        // ETA 25 sits inside the 30-minute window: the 30 heads-up is the live path's to fire,
+        // so nothing stale is armed behind it; the 15 one arms for 10 minutes out.
+        #expect(!plans.contains { $0.alert == .thirtyMinutes })
+        #expect(plans.contains { $0.alert == .fifteenMinutes })
+    }
+
+    @Test("Landed alert is armed from the official arrival when known")
+    func armsLandedFromOfficialArrival() {
+        let arrival = Date().addingTimeInterval(3 * 3600)
+        let plans = FlightAlertState().scheduledAlerts(etaMinutes: nil, officialArrival: arrival)
+        #expect(plans.contains { $0.alert == .landed && $0.fireAt == arrival })
+    }
+
+    @Test("Nothing is armed without an ETA or official arrival")
+    func armsNothingWithoutTiming() {
+        let plans = FlightAlertState().scheduledAlerts(etaMinutes: nil, officialArrival: nil)
+        #expect(plans.isEmpty)
+    }
+
+    @Test("Fired 15-minute alert suppresses a later 30-minute arming")
+    func fired15SuppressesLaterArming() {
+        var state = FlightAlertState()
+        _ = state.update(etaMinutes: 12, isLanded: false) // 15 fires live
+
+        // ETA drifts back out of the window (the flight slowed): a stale "30 minutes"
+        // notification must not be armed behind the 15-minute one, and 15 is not re-armed.
+        let plans = state.scheduledAlerts(etaMinutes: 45, officialArrival: nil)
+        #expect(!plans.contains { $0.alert == .thirtyMinutes })
+        #expect(!plans.contains { $0.alert == .fifteenMinutes })
+
+        // The landing alert is still armed from the live ETA.
+        #expect(plans.contains { $0.alert == .landed })
+    }
+
+    @Test("Fired landed alert arms nothing further")
+    func firedLandedArmsNothing() {
+        var state = FlightAlertState()
+        state.markFired(.landed)
+        #expect(state.scheduledAlerts(etaMinutes: 20, officialArrival: nil).isEmpty)
+        #expect(state.scheduledAlerts(etaMinutes: 40, officialArrival: Date()).isEmpty)
+    }
 }

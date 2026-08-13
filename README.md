@@ -166,11 +166,13 @@ heads-up. So the watch vibrates even if the user has notification sounds muted o
 
 - **Background location.** The app scans while you are looking at it, and not otherwise.
 - **Push notifications.** They would need a server polling the API for you. The on-device proximity
-  haptic covers the same need while the app is open, and flight tracking fires *local*
-  notifications (30 / 15 / landed, with vibration) from the watch itself while the Track tab is
-  active — no server, no background execution. A flight that lands while the app is closed will
-  not notify; the alerts are for waiting at the airport with the screen on, not a background
-  watch service.
+  haptic covers the same need while the app is open, and flight tracking arms *local*
+  notifications (30 / 15 / landed, with vibration) for each milestone while the Track tab is
+  active — no server, no background execution. Every poll re-arms them against the freshest ETA,
+  and the notification system delivers them even after the watch screen turns off and the app is
+  suspended; the landed alert falls back to the live ETA when no FlightAware arrival is known. A
+  flight that lands while the app was never running will not notify; the alerts are for a pickup
+  wait you started tracking, not a background watch service.
 - **CloudKit.** Settings are a handful of values in an App Group.
 
 ## FlightAware AeroAPI (optional)

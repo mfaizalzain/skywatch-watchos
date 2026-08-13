@@ -365,35 +365,31 @@ final class FlightTrackStore {
         }
     }
 
-    /// Arms the not-yet-fired 30/15-minute alerts as future-dated local
+    /// Arms the not-yet-fired pickup alerts as future-dated local
     /// notifications (they fire from the notification system even when the
-    /// app is suspended — the pickup-wait case), and re-arms the landed alert
-    /// from the official FlightAware arrival when known.
+    /// app is suspended — the pickup-wait case). The decisions — which
+    /// milestones to arm, and for when — live in
+    /// `FlightAlertState.scheduledAlerts`; this method only hands the plans to
+    /// the notification center.
     ///
     /// Called on every poll that knows an ETA: each call replaces the previous
     /// schedule with one built from the freshest numbers, so the alerts track
     /// the flight rather than drifting with an old ETA. A heads-up is armed
     /// only while its threshold is still *ahead* of the current ETA: once the
     /// ETA is inside the window the instant-fire path owns the alert on this
-    /// same poll, and arming a stale "30 minutes to landing" for 60 s later
-    /// would deliver it after the user has already heard the 15-minute one.
-    /// The two paths can't both deliver: a live fire cancels its scheduled
-    /// twin (shared identifier) first.
+    /// same poll, and the two paths can't both deliver — a live fire cancels
+    /// its scheduled twin (shared identifier) first.
     private func rearmScheduledAlerts(etaMinutes: Double?) {
         guard let flightNumber else { return }
         let now = Date()
-
-        if !alertState.hasFired30, let etaMinutes, etaMinutes.isFinite, etaMinutes > 30 {
-            let at = now.addingTimeInterval(max((etaMinutes - 30) * 60, 60))
-            Task { await notifier.schedule(.thirtyMinutes, flight: flightNumber.callsign, at: at) }
-        }
-        if !alertState.hasFired15, let etaMinutes, etaMinutes.isFinite, etaMinutes > 15 {
-            let at = now.addingTimeInterval(max((etaMinutes - 15) * 60, 60))
-            Task { await notifier.schedule(.fifteenMinutes, flight: flightNumber.callsign, at: at) }
-        }
-        if !alertState.hasFiredLanded, let officialArrival {
-            let at = max(officialArrival, now.addingTimeInterval(60))
-            Task { await notifier.schedule(.landed, flight: flightNumber.callsign, at: at, detail: arrivalDetail) }
+        for plan in alertState.scheduledAlerts(
+            etaMinutes: etaMinutes,
+            officialArrival: officialArrival,
+            now: now
+        ) {
+            // Only the landed body carries the terminal/gate suffix.
+            let detail = plan.alert == .landed ? arrivalDetail : nil
+            Task { await notifier.schedule(plan.alert, flight: flightNumber.callsign, at: plan.fireAt, detail: detail) }
         }
     }
 
