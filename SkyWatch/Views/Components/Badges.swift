@@ -11,6 +11,8 @@ struct Badge: View {
             .font(Typography.smallValue)
             .fontWeight(.semibold)
             .foregroundStyle(Palette.dimmed(color, isLuminanceReduced: isLuminanceReduced))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .padding(.horizontal, 3)
             .padding(.vertical, 1)
             .background(

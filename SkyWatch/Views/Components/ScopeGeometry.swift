@@ -28,6 +28,10 @@ struct ScopeGeometry: Equatable {
 
     func ringRadius(_ fraction: Double) -> CGFloat { radius * fraction }
 
+    /// Glyphs scale with the scope so a 49 mm Ultra doesn't draw the same tiny triangles as a
+    /// 40 mm SE — and the invisible tap areas keep pace with what's on screen.
+    var glyphScale: CGFloat { radius / 96 }
+
     func point(bearingDegrees: Double, distanceNM: Double) -> CGPoint {
         let relative = Geodesy.normalized0to360(bearingDegrees - rotation).radians
         // Clamped rather than dropped: a target just outside the ring sits on the edge, which is

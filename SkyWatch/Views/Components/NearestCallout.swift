@@ -22,6 +22,22 @@ struct NearestCallout: View {
         target.aircraft.altBaro.map { Units.altitude($0, system: unitSystem) }
     }
 
+    /// The "look up now" moment: when the nearest aircraft will pass closest inside a minute,
+    /// that countdown matters more than its altitude. Clock + seconds mirror the list.
+    private var approachCountdown: Int? {
+        guard let approach = target.closestApproach,
+              approach.timeToClosestApproach > 0,
+              approach.timeToClosestApproach <= 60 else { return nil }
+        return Int(approach.timeToClosestApproach.rounded())
+    }
+
+    private var accessibilityValue: String {
+        if let countdown = approachCountdown {
+            return "\(target.accessibilityDescription(unitSystem: unitSystem)), passes closest in \(countdown) seconds"
+        }
+        return target.accessibilityDescription(unitSystem: unitSystem)
+    }
+
     var body: some View {
         HStack(spacing: 5) {
             BearingArrow(
@@ -39,7 +55,14 @@ struct NearestCallout: View {
                 .font(Typography.smallValue)
                 .foregroundStyle(Palette.dimmed(Palette.primaryWhite, isLuminanceReduced: isLuminanceReduced))
 
-            if let altitude {
+            if let countdown = approachCountdown {
+                Image(systemName: "clock")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced))
+                Text("\(countdown)s")
+                    .font(Typography.smallValue)
+                    .foregroundStyle(Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced))
+            } else if let altitude {
                 VerticalTrendChevron(
                     trend: target.aircraft.verticalTrend,
                     color: Palette.dimmed(Palette.dataCyan, isLuminanceReduced: isLuminanceReduced)
@@ -73,7 +96,7 @@ struct NearestCallout: View {
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Nearest target")
-        .accessibilityValue(target.accessibilityDescription(unitSystem: unitSystem))
+        .accessibilityValue(accessibilityValue)
     }
 }
 
