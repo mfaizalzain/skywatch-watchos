@@ -1,13 +1,20 @@
 # SkyWatch
 
-A standalone Apple Watch scanner for aircraft flying near you, built on the free
-[airplanes.live](https://airplanes.live) ADS-B API.
+A standalone Apple Watch scanner for aircraft flying near you, built on
+[FlightAware AeroAPI](https://www.flightaware.com/aeroapi).
 
 No iPhone app, no `WatchConnectivity`, no third-party dependencies, no analytics. The watch talks
-to exactly two hosts — `api.airplanes.live` (live ADS-B, no key) and, only when you opt in with a
-FlightAware AeroAPI key, `aeroapi.flightaware.com` (official flight status) — and nothing else.
+to exactly one host — `aeroapi.flightaware.com` — and nothing else.
 
-Built for personal sideloading. It is not intended for the App Store.
+Built for personal sideloading. It is not intended for the App Store. **You need your own AeroAPI
+key to build it** — see [AeroAPI key](#aeroapi-key) below. The key is never in this repository.
+
+> **Note on the previous data source.** SkyWatch was originally built on the free
+> [airplanes.live](https://airplanes.live) ADS-B API. That API is now gated — it returns HTTP 403
+> to unregistered clients — so the app moved to AeroAPI, which needs a key. Some ADS-B-only fields
+> went away with it: squawk and emergency status, ICAO hex, registration, and the military/LADD
+> flags have no AeroAPI equivalent and the features built on them were removed. Route (origin →
+> destination) is now free with every scan, where it used to need a separate lookup.
 
 ---
 
@@ -25,10 +32,9 @@ Built for personal sideloading. It is not intended for the App Store.
   live ETA countdown to landing with watch notifications at **30 min**, **15 min**, and **on the
   ground** — built for meeting someone at the gate. A green **● LIVE** badge shows the flight is
   transmitting a position right now; ETA comes from the aircraft's live position and ground speed.
-  Alerts vibrate the watch (a strong buzz on landing), and when a FlightAware AeroAPI key is
-  injected at build time, the screen also shows the airline's *official* status, terminal, gate
-  and estimated arrival — and the landed alert is triggered by the airline's own status rather
-  than inferred from the ADS-B feed. Tracking stops automatically once the flight has landed
+  Alerts vibrate the watch (a strong buzz on landing), and the screen also shows the airline's
+  *official* status, terminal, gate and estimated arrival — with the landed alert triggered by the
+  airline's own status rather than inferred from the position feed. Tracking stops once it lands
   (the final state stays on screen until you dismiss it), so nothing keeps polling afterwards.
 - **Settings** — radius, refresh interval (10 / 20 / 60 s), units, heading-up vs north-up, filters, proximity haptic.
 - **Complication** — a Smart Stack widget with the count in range and the nearest aircraft.
@@ -96,9 +102,9 @@ nothing else needs to change and settings keep persisting.
 UI-independent sources are compiled into it directly — so it runs in the simulator without
 installing the app.
 
-Covered: response decoding (including `alt_baro: "ground"`, `~`-prefixed hexes, `lastPosition`-only
-and `rr_lat`-only targets, `msg` errors, and a malformed member inside a valid `ac` array),
-great-circle distance and bearing against published examples, antimeridian and pole cases, the
+Covered: response decoding (altitude in hundreds of feet, ground traffic, `update_type` mapping to
+a position source, position age derived from the timestamp including clock skew, `ident_prefix`
+labels, and a malformed member inside a valid `flights` array), bounding-box construction, great-circle distance and bearing against published examples, antimeridian and pole cases, the
 heading filter's 359° → 0° wrap, rate-limiter spacing under concurrent callers, the full merge
 lifecycle from first appearance to being dropped after two missed cycles, and flight tracking —
 flight-number parsing (IATA → ICAO callsign conversion, normalisation, garbage rejection), ETA
@@ -120,21 +126,23 @@ The rate-limiter tests wait on a real clock, so the suite takes roughly ten seco
 | black | scope background — OLED pixels off, real battery saving on Always-On |
 | cyan | reference data: range rings, labels, secondary readouts |
 | magenta | the nearest or pinned target — the PFD's "active" colour |
-| amber | stale positions, MLAT and estimated targets, reduced GPS accuracy |
-| red | emergency squawks and any active `emergency` field |
+| amber | stale positions, MLAT and projected targets, reduced GPS accuracy |
+| red | failure states that need you to act |
 | white | primary numeric values |
 
 Nothing is coloured decoratively. If something is amber, its position is uncertain.
 
-**Data quality is never hidden.** A position from `lastPosition` is badged with its age; an
-`rr_lat`/`rr_lon` position is drawn as a hollow ring and labelled `EST`, because it is the
-receiver's rough guess and not a fix at all; MLAT is badged; `mode_s` targets have no position and
-are counted under "heard, no position" rather than being drawn somewhere plausible.
+**Data quality is never hidden.** Every position carries AeroAPI's `update_type`, and the scope
+says which it is: a projected position (`update_type: P`, extrapolated by FlightAware rather than
+reported) is drawn as a hollow ring and labelled `PROJ`; a multilaterated one is badged `MLAT`;
+any position over a minute old is badged with its age. A flight with no `last_position` at all is
+not drawn somewhere plausible — it is not drawn.
 
-**Rate limiting is structural.** Every endpoint, including the detail screen's and the flight
-tracker's, goes through one actor that reserves its slot before suspending, so concurrent callers
-queue instead of firing together. The minimum spacing is 1.2 s against a documented limit of 1
-request per second.
+**Rate limiting is structural.** Every request in the app — the scan loop and the flight tracker
+alike — goes through one actor that reserves its slot before suspending, so concurrent callers
+queue instead of firing together. The spacing is 7 s, comfortably under the Personal tier's 10
+result sets per minute. Because AeroAPI is metered, the detail screen spends no query of its own:
+it reads the scan's results, which the poll loop is already refreshing.
 
 **Battery.** Polling only runs while the scene is active, backs off to 2 minutes when the display
 is luminance-reduced, and the compass runs only while the radar is on screen. Location accuracy is
@@ -142,14 +150,14 @@ set to 100 m with a 250 m distance filter — far more than a 20 nm radius needs
 is user-selectable (10 / 20 / 60 s — the sweet spot: fast enough that nothing visibly moves
 between sweeps, slow enough to stay cheap). Flight tracking polls the callsign endpoint on the
 same scene-gated cadence but slower — tracking is a wait, not a live radar: 2 minutes on wrist-up,
-5 minutes on wrist-down; the AeroAPI status layer is metered and polls at 10 minutes (≈ 6
-queries/hour ≈ $0.03 inside the feeder's $10/month Personal allowance). The alerts are local
+5 minutes on wrist-down; the official status layer polls at 10 minutes. Every query is billed, so
+the refresh interval you pick is the bill you pay — see [AeroAPI key](#aeroapi-key). The alerts are local
 notifications fired by the watch itself — no server, no background execution.
 
-**Landing detection is layered.** The ADS-B feed has no "landed" field, so the app infers it: the
-transponder reports `ground` near the arrival airport, or a tracked flight powers down and leaves
-the feed. When a FlightAware AeroAPI key is in the build, the airline's own status
-(Scheduled / En Route / Landed / Arrived / Cancelled / Diverted) overrides the inference — a flight
+**Landing detection is layered.** The position feed has no "landed" field, so the app infers it:
+the flight reports zero altitude near the arrival airport, or a tracked flight leaves the feed.
+The airline's own status (Scheduled / En Route / Landed / Arrived / Cancelled / Diverted)
+overrides the inference — a flight
 that has officially arrived triggers the landed alert even after its transponder has gone quiet,
 and the screen shows terminal, gate and estimated arrival. ETA stays a great-circle-distance-over-
 ground-speed estimate, and a flight that is "not in the feed" may simply not have departed yet or
@@ -170,33 +178,31 @@ heads-up. So the watch vibrates even if the user has notification sounds muted o
   notifications (30 / 15 / landed, with vibration) for each milestone while the Track tab is
   active — no server, no background execution. Every poll re-arms them against the freshest ETA,
   and the notification system delivers them even after the watch screen turns off and the app is
-  suspended; the landed alert falls back to the live ETA when no FlightAware arrival is known. A
+  suspended; the landed alert falls back to the live ETA when no official arrival is known. A
   flight that lands while the app was never running will not notify; the alerts are for a pickup
   wait you started tracking, not a background watch service.
 - **CloudKit.** Settings are a handful of values in an App Group.
 
-## FlightAware AeroAPI (optional)
+## AeroAPI key
 
-The Track tab's *official* status layer (airline status, terminal, gate, estimated arrival, and
-the authoritative landed trigger) is disabled by default: it needs a FlightAware AeroAPI key, and
-the key is intentionally **not** in the repository.
+**Required.** Every screen in the app is fed by AeroAPI, so a build without a key shows "No valid
+AeroAPI key" and nothing else. The key is intentionally **not** in this repository — anyone
+building SkyWatch brings their own.
 
-To enable it:
-
-1. Sign up for AeroAPI at [flightaware.com/aeroapi](https://www.flightaware.com/aeroapi) — the
-   free **Personal** tier charges per query (≈ $0.005 for `flights/{ident}`) against a $5/month
-   allowance, **doubled to $10/month for ADS-B feeders** (PiAware/FlightFeeder accounts get
-   Enterprise status plus the doubled allowance automatically). A 2-hour pickup session polls
-   once per 10 minutes: about 12 queries, $0.06.
+1. Sign up for AeroAPI at [flightaware.com/aeroapi](https://www.flightaware.com/aeroapi). The
+   **Personal** tier is billed per query against a monthly allowance, and the allowance is doubled
+   for ADS-B feeders (PiAware/FlightFeeder accounts get it automatically). Check the current
+   pricing page before you pick a refresh interval — the scan loop is the bulk of the usage, and
+   the radar's 10/20/60 s setting is what decides your query volume.
 2. The app reads the key from the `AEROAPI_KEY` build setting into its `AeroAPIKey` Info.plist
    entry. For a personal build, pass it to `xcodebuild`:
    `xcodebuild … AEROAPI_KEY="your-key"`. The release workflow does this from the
    `AEROAPI_KEY` GitHub Actions secret — add the secret and dispatch.
-3. Without a key the app behaves exactly as before: live ETA and inferred landing from ADS-B
-   only, no FlightAware branding anywhere.
+3. Never commit the key. The Info.plist holds only the `$(AEROAPI_KEY)` placeholder, and the
+   build setting is empty in the checked-in project file.
 
-The AeroAPI client is rate-limited independently (7 s spacing, comfortably under the Personal
-tier's 10 result sets/minute) and shares nothing with the airplanes.live limiter.
+The client is one actor with a 7 s minimum spacing shared by every caller, so nothing in the app
+can outrun the Personal tier's limit.
 
 ## Complication expectations
 
@@ -208,12 +214,12 @@ code does not try to work around the budget.
 
 ## Attribution
 
-Data from [airplanes.live](https://airplanes.live) — unfiltered community ADS-B and MLAT. No SLA,
-no uptime guarantee, **non-commercial use only**.
+Flight data from [FlightAware AeroAPI](https://www.flightaware.com/aeroapi).
 
-Coverage is community-fed and uneven, so an empty sky is a normal and frequent result in many
-regions. If you end up using this regularly, consider
-[feeding data back](https://airplanes.live/get-started/) — the network runs on volunteer receivers.
+Coverage is good but not total, and the scan returns only flights FlightAware is tracking — an
+empty sky is a normal result in quiet regions. FlightAware's coverage is partly community-fed too:
+running a [PiAware receiver](https://flightaware.com/adsb/piaware/) also doubles your AeroAPI
+allowance.
 
 ## Regenerating the project file
 

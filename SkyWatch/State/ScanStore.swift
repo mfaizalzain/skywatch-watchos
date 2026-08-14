@@ -14,8 +14,6 @@ final class ScanStore {
     // MARK: Published state
 
     private(set) var targets: [TrackedTarget] = []
-    /// Targets heard on Mode S with no position at all — excluded from the scope, counted here.
-    private(set) var positionlessCount = 0
     private(set) var lastUpdated: Date?
     private(set) var isLoading = false
     private(set) var error: SkyWatchError?
@@ -35,7 +33,7 @@ final class ScanStore {
 
     // MARK: Dependencies
 
-    private let client: AirplanesLiveClient
+    private let client: AeroAPIClient
     private let merger = TargetMerger()
     private let logger = Logger(subsystem: "com.fmz.skywatch", category: "scan")
 
@@ -53,7 +51,7 @@ final class ScanStore {
     init(
         settings: SettingsStore = SettingsStore(),
         location: LocationService = LocationService(),
-        client: AirplanesLiveClient = AirplanesLiveClient()
+        client: AeroAPIClient = AeroAPIClient()
     ) {
         self.settings = settings
         self.location = location
@@ -98,7 +96,6 @@ final class ScanStore {
     var hasEverLoaded: Bool { lastUpdated != nil }
 
     private func passesFilters(_ target: TrackedTarget) -> Bool {
-        if settings.showsMilitaryOnly, !target.aircraft.isMilitary { return false }
         if settings.hidesGroundTraffic, target.aircraft.altBaro?.isOnGround == true { return false }
         if !settings.includesUncertainTargets, !target.position.source.isPrecise { return false }
         if target.distanceNM > settings.radius.nauticalMiles * 1.05 { return false }
@@ -220,9 +217,9 @@ final class ScanStore {
             error = nil
         } catch is CancellationError {
             // Scene deactivated or the radius changed underneath us. Leave the screen as it is.
-        } catch let failure as SkyWatchError {
+        } catch let failure as AeroAPIError {
             // The last good scan stays on screen with a visible age. Never blank on a transient.
-            error = failure
+            error = failure.scanError
             logger.error("Scan failed: \(String(describing: failure), privacy: .public)")
         } catch {
             self.error = .decoding(underlying: error.localizedDescription)
@@ -232,7 +229,6 @@ final class ScanStore {
     private func apply(_ response: AircraftResponse, observer: Coordinate) {
         let now = Date()
         targets = merger.merge(existing: targets, response: response.aircraft, observer: observer, now: now)
-        positionlessCount = response.aircraft.filter(\.isPositionless).count
         lastUpdated = now
         lastQueryCoordinate = observer
 
@@ -240,29 +236,13 @@ final class ScanStore {
         publishSnapshot()
     }
 
-    /// One-off lookup for the detail screen. Shares the client — and therefore the rate limiter —
-    /// with the scan loop, so the two can never combine to exceed one request per second.
-    func refreshDetail(hex: String) async -> Aircraft? {
-        do {
-            let response = try await client.aircraft(hex: hex)
-            guard let aircraft = response.aircraft.first(where: { $0.hex == hex }) else { return nil }
-
-            // Fold the fresher data back into the scan so the list and scope agree with the detail
-            // screen instead of drifting apart while it is open.
-            if let observer = observerCoordinate {
-                targets = merger.merge(
-                    existing: targets,
-                    response: [aircraft],
-                    observer: observer,
-                    penalizeMissing: false
-                )
-            }
-            return aircraft
-        } catch {
-            // The scan loop owns the error banner; a failed detail poll just leaves the last values
-            // on screen.
-            return nil
-        }
+    /// The detail screen's view of one target.
+    ///
+    /// AeroAPI has no per-flight position endpoint that the scan does not already cover, so this
+    /// reads the scan's own results rather than spending a second billable query on data the poll
+    /// loop is refreshing anyway. `nil` means the target has left range.
+    func detail(id: String) -> Aircraft? {
+        targets.first { $0.id == id }?.aircraft
     }
 
     // MARK: - Location changes

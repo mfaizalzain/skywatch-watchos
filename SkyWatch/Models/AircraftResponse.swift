@@ -2,7 +2,7 @@ import Foundation
 
 /// Decodes a `T`, or records why it couldn't, without failing its container.
 ///
-/// One malformed aircraft object in a 40-target response must not cost us the other 39.
+/// One malformed flight object in a 40-result response must not cost us the other 39.
 struct FailableDecodable<T: Decodable & Sendable>: Sendable, Decodable {
     let value: T?
     let error: String?
@@ -18,53 +18,34 @@ struct FailableDecodable<T: Decodable & Sendable>: Sendable, Decodable {
     }
 }
 
-/// The root object returned by every v2 endpoint.
+/// The root object returned by AeroAPI's `/flights/search`.
 struct AircraftResponse: Sendable, Decodable {
     let aircraft: [Aircraft]
-    let message: String?
-    /// Server time, normalised to seconds since epoch.
-    let now: Date?
-    let total: Int?
-    let cacheTime: Date?
-    let processingTimeMS: Double?
+    /// Cursor to the next page, when the result set was truncated. The scan asks for one page, so
+    /// this is kept only to tell the log that more was available.
+    let nextPageLink: String?
 
     /// Decode failures for individual members, kept for logging rather than display.
     let malformedMemberErrors: [String]
 
     enum CodingKeys: String, CodingKey {
-        case aircraft = "ac"
-        case message = "msg"
-        case now, total, ctime, ptime
+        case flights, links
+    }
+
+    enum LinkKeys: String, CodingKey {
+        case next
     }
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        // The documented key is `aircraft`; the wire format actually uses `ac`. Accept either, and
-        // treat a missing array as an empty one — an empty sky is a normal response, not an error.
-        let members = try container.decodeIfPresent([FailableDecodable<Aircraft>].self, forKey: .aircraft) ?? []
+        // A missing array is an empty sky, which is a normal response rather than an error.
+        let members = try container.decodeIfPresent([FailableDecodable<Aircraft>].self, forKey: .flights) ?? []
         aircraft = members.compactMap(\.value)
         malformedMemberErrors = members.compactMap(\.error)
 
-        message = try container.decodeIfPresent(String.self, forKey: .message)
-        total = try container.decodeIfPresent(Int.self, forKey: .total)
-        processingTimeMS = try container.decodeIfPresent(Double.self, forKey: .ptime)
-
-        now = Self.date(from: try container.decodeIfPresent(Double.self, forKey: .now))
-        cacheTime = Self.date(from: try container.decodeIfPresent(Double.self, forKey: .ctime))
-    }
-
-    /// The docs say seconds; the wire says milliseconds. Anything past ~1e11 is milliseconds
-    /// (1e11 seconds is the year 5138, and 1e11 milliseconds is 1973).
-    static func date(from raw: Double?) -> Date? {
-        guard let raw, raw > 0, raw.isFinite else { return nil }
-        return Date(timeIntervalSince1970: raw > 1e11 ? raw / 1000 : raw)
-    }
-
-    /// The API reports success as the string "No error", so silence is not golden here.
-    var apiError: String? {
-        guard let message, message.caseInsensitiveCompare("No error") != .orderedSame else { return nil }
-        return message
+        let links = try? container.nestedContainer(keyedBy: LinkKeys.self, forKey: .links)
+        nextPageLink = try links?.decodeIfPresent(String.self, forKey: .next)
     }
 }
 
@@ -76,5 +57,6 @@ enum SkyWatchError: Error, Sendable, Hashable {
     case decoding(underlying: String)
     case locationDenied
     case locationUnavailable
-    case apiMessage(String)
+    /// The AeroAPI key is missing, invalid, or out of allowance.
+    case unauthorized
 }

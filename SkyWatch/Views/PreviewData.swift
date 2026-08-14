@@ -6,58 +6,67 @@ import Foundation
 enum PreviewData {
     static let observer = Coordinate(latitude: 37.3349, longitude: -122.0090)
 
-    static func aircraft(_ json: String) -> Aircraft {
-        guard let data = json.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(Aircraft.self, from: data) else {
-            // Previews should degrade, not trap.
-            return (try? JSONDecoder().decode(Aircraft.self, from: Data("{}".utf8))) ?? emptyAircraft
-        }
-        return decoded
-    }
-
+    /// `{}` decodes cleanly because every field is optional; this is only a fallback for the
+    /// impossible case. Previews should degrade, not trap.
     private static let emptyAircraft: Aircraft = {
-        // `{}` decodes cleanly because every field is optional; this is only a compiler-satisfying
-        // fallback for the impossible case.
-        try! JSONDecoder().decode(Aircraft.self, from: Data("{}".utf8))
+        (try? JSONDecoder().decode(Aircraft.self, from: Data("{}".utf8)))!
     }()
 
     // MARK: - Aircraft
 
+    /// Timestamps are rendered relative to a fixed instant so the previews stay deterministic; the
+    /// helper below re-stamps them against `Date()` when a fresh position is wanted.
+    static func aircraft(_ json: String, positionAge: TimeInterval = 2) -> Aircraft {
+        let stamped = json.replacingOccurrences(
+            of: "$TIMESTAMP",
+            with: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-positionAge))
+        )
+        guard let data = stamped.data(using: .utf8),
+              let decoded = try? Self.decoder.decode(Aircraft.self, from: data) else {
+            return emptyAircraft
+        }
+        return decoded
+    }
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+
     static let airliner = aircraft("""
-    {"hex":"a1b2c3","flight":"UAL328  ","r":"N77258","t":"B739","category":"A3",
-     "lat":37.4021,"lon":-122.0553,"alt_baro":12000,"alt_geom":12350,"gs":312.4,
-     "ias":280,"tas":330,"mach":0.52,"track":210.3,"baro_rate":-1216,"true_heading":208.1,
-     "squawk":"3651","emergency":"none","nav_modes":["autopilot","vnav","lnav"],
-     "nav_altitude_mcp":10000,"nav_qnh":1013.6,"seen":0.4,"seen_pos":0.9,"rssi":-14.2,
-     "type":"adsb_icao","nic":8,"rc":186,"nac_p":9,"nac_v":2,"sil":3,"sil_type":"perhour",
-     "gva":2,"sda":2,"version":2,"wd":270,"ws":42,"oat":-18,"tat":-4,"dbFlags":0}
+    {"fa_flight_id":"UAL328-1700000000-airline-0001","ident":"UAL328","ident_icao":"UAL328",
+     "ident_iata":"UA328","aircraft_type":"B739",
+     "origin":{"code":"KSFO","code_icao":"KSFO","code_iata":"SFO","name":"San Francisco Intl","city":"San Francisco"},
+     "destination":{"code":"KDEN","code_icao":"KDEN","code_iata":"DEN","name":"Denver Intl","city":"Denver"},
+     "last_position":{"altitude":120,"altitude_change":"D","groundspeed":312,"heading":210,
+      "latitude":37.4021,"longitude":-122.0553,"timestamp":"$TIMESTAMP","update_type":"A"}}
     """)
 
-    static let military = aircraft("""
-    {"hex":"ae1234","flight":"RCH471  ","r":"08-8191","t":"C17","category":"A5",
-     "lat":37.2210,"lon":-121.9330,"alt_baro":24000,"gs":410,"track":45.0,"baro_rate":1920,
-     "squawk":"4517","seen":1.1,"seen_pos":1.4,"rssi":-19.8,"type":"adsb_icao","dbFlags":1}
-    """)
-
-    static let emergency = aircraft("""
-    {"hex":"c0ffee","flight":"SWA1234 ","t":"B738","lat":37.3800,"lon":-122.0500,
-     "alt_baro":4200,"gs":210,"track":95.0,"baro_rate":-640,"squawk":"7700",
-     "emergency":"general","seen":0.6,"seen_pos":0.8,"rssi":-11.0,"type":"adsb_icao"}
+    static let lifeguard = aircraft("""
+    {"fa_flight_id":"N911MD-1700000000-adhoc-0002","ident":"N911MD","ident_prefix":"L",
+     "aircraft_type":"C560",
+     "last_position":{"altitude":42,"altitude_change":"C","groundspeed":210,"heading":95,
+      "latitude":37.3800,"longitude":-122.0500,"timestamp":"$TIMESTAMP","update_type":"A"}}
     """)
 
     static let mlatStale = aircraft("""
-    {"hex":"~abc999","flight":"N512TS  ","t":"C172","lat":37.2600,"lon":-122.1400,
-     "alt_baro":3100,"gs":98,"track":310.0,"seen":92,"seen_pos":92,"rssi":-27.4,"type":"mlat"}
-    """)
+    {"fa_flight_id":"N512TS-1700000000-adhoc-0003","ident":"N512TS","aircraft_type":"C172",
+     "last_position":{"altitude":31,"altitude_change":"-","groundspeed":98,"heading":310,
+      "latitude":37.2600,"longitude":-122.1400,"timestamp":"$TIMESTAMP","update_type":"M"}}
+    """, positionAge: 92)
 
     static let onGround = aircraft("""
-    {"hex":"d00d00","flight":"ASA119  ","t":"B39M","lat":37.3626,"lon":-121.9290,
-     "alt_baro":"ground","gs":12,"track":150.0,"seen":0.3,"seen_pos":0.5,"type":"adsb_icao"}
+    {"fa_flight_id":"ASA119-1700000000-airline-0004","ident":"ASA119","aircraft_type":"B39M",
+     "last_position":{"altitude":0,"altitude_change":"-","groundspeed":12,"heading":150,
+      "latitude":37.3626,"longitude":-121.9290,"timestamp":"$TIMESTAMP","update_type":"X"}}
     """)
 
-    static let estimated = aircraft("""
-    {"hex":"beef01","t":"GLF6","rr_lat":37.44,"rr_lon":-122.15,"seen":41,"type":"mode_s"}
-    """)
+    static let projected = aircraft("""
+    {"fa_flight_id":"GLF6XX-1700000000-adhoc-0005","ident":"N600GX","aircraft_type":"GLF6",
+     "last_position":{"altitude":410,"altitude_change":"-","groundspeed":480,"heading":20,
+      "latitude":37.4400,"longitude":-122.1500,"timestamp":"$TIMESTAMP","update_type":"P"}}
+    """, positionAge: 41)
 
     // MARK: - Tracked targets
 
@@ -66,7 +75,7 @@ enum PreviewData {
         trail: Int = 2,
         missedCycles: Int = 0
     ) -> TrackedTarget {
-        let position = aircraft.resolvedPosition ?? ResolvedPosition(
+        let position = aircraft.resolvedPosition() ?? ResolvedPosition(
             coordinate: observer,
             source: .estimated,
             ageSeconds: 120
@@ -86,7 +95,7 @@ enum PreviewData {
         }
 
         return TrackedTarget(
-            id: aircraft.hex ?? UUID().uuidString,
+            id: aircraft.faFlightID ?? UUID().uuidString,
             aircraft: aircraft,
             position: position,
             distanceNM: Geodesy.distanceNM(from: observer, to: position.coordinate),
@@ -106,14 +115,13 @@ enum PreviewData {
     }
 
     static var airlinerTarget: TrackedTarget { target(airliner) }
-    static var militaryTarget: TrackedTarget { target(military) }
-    static var emergencyTarget: TrackedTarget { target(emergency) }
+    static var lifeguardTarget: TrackedTarget { target(lifeguard) }
     static var staleMLATTarget: TrackedTarget { target(mlatStale) }
     static var groundTarget: TrackedTarget { target(onGround) }
-    static var estimatedTarget: TrackedTarget { target(estimated) }
+    static var projectedTarget: TrackedTarget { target(projected) }
 
     static var handful: [TrackedTarget] {
-        [airlinerTarget, militaryTarget, staleMLATTarget, emergencyTarget]
+        [airlinerTarget, lifeguardTarget, staleMLATTarget, projectedTarget]
             .sorted { $0.distanceNM < $1.distanceNM }
     }
 
@@ -133,7 +141,7 @@ enum PreviewData {
             let age: TimeInterval = index % 5 == 0 ? 90 : 2
 
             var base = airliner
-            if index % 9 == 0 { base = military }
+            if index % 9 == 0 { base = lifeguard }
 
             return TrackedTarget(
                 id: String(format: "sim%03d", index),

@@ -1,15 +1,17 @@
 import Foundation
 import os
 
-/// FlightAware AeroAPI client — the official-status layer for the Track tab.
+/// FlightAware AeroAPI client — the only thing in this app that touches the
+/// network, and the only host it ever talks to.
 ///
-/// Unlike airplanes.live (free, unlimited), AeroAPI is metered: the Personal
-/// tier bills per query (~$0.005 for `flights/{ident}`) against a free
-/// monthly allowance (doubled to $10 for ADS-B feeders). The Track tab polls
-/// it at a much slower cadence than the scan loop for that reason.
+/// AeroAPI is metered: the Personal tier bills per query against a free monthly
+/// allowance. Every request in the app goes through this one actor's rate
+/// limiter, so the scan loop and the Track tab can never combine to exceed the
+/// spacing set below.
 ///
 /// The API key is injected at build time from the `AEROAPI_KEY` build setting
-/// (release workflow reads the sealed GitHub secret). It is never in the repo.
+/// (release workflow reads the sealed GitHub secret). It is never in the repo —
+/// anyone building this brings their own.
 actor AeroAPIClient {
     static let baseURL = URL(string: "https://aeroapi.flightaware.com/aeroapi/")!
 
@@ -20,8 +22,8 @@ actor AeroAPIClient {
     private let logger = Logger(subsystem: "com.fmz.skywatch", category: "aeroapi")
 
     /// Personal tier allows 10 result sets per minute; stay comfortably under
-    /// with one request per 7 s. Airplanes.live gets its own limiter, so the
-    /// two never contend.
+    /// with one request per 7 s. The scan loop and the Track tab share this
+    /// limiter, so their requests queue rather than contend.
     private static let spacing: Duration = .seconds(7)
     private let retryDelays: [Duration] = [.seconds(3), .seconds(8)]
     private let rateLimitBackoff: Duration = .seconds(30)
@@ -76,6 +78,31 @@ actor AeroAPIClient {
         return URLSession(configuration: configuration)
     }
 
+    /// The scan query: every airborne flight whose last reported position falls inside a box drawn
+    /// around the observer.
+    ///
+    /// AeroAPI has no radius search, so the radius becomes a bounding box and the corners are
+    /// trimmed back to a circle by `ScanStore`'s own distance filter.
+    func aircraft(near coordinate: Coordinate, radiusNM: Double) async throws -> AircraftResponse {
+        let box = BoundingBox(centre: coordinate, radiusNM: radiusNM)
+        // max_pages=1 caps the billable result sets: the nearest page is the one that matters, and
+        // the tracked-target cap discards the rest anyway.
+        let query = "-latlong \"\(box.queryValue)\""
+        guard let escapedQuery = query.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else {
+            throw AeroAPIError.badRequest
+        }
+        return try await get("flights/search?query=\(escapedQuery)&max_pages=1")
+    }
+
+    /// The Track tab's position query: the airborne flight matching one callsign.
+    func aircraft(callsign: String) async throws -> AircraftResponse {
+        let query = "-idents \(callsign)"
+        guard let escapedQuery = query.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else {
+            throw AeroAPIError.badRequest
+        }
+        return try await get("flights/search?query=\(escapedQuery)&max_pages=1")
+    }
+
     /// Fetches and picks the flight to track for a flight number or callsign.
     func flight(ident: String) async throws -> AeroFlight? {
         // ident_type=designator forces interpretation as a flight number, not
@@ -106,6 +133,10 @@ actor AeroAPIClient {
     }
 
     private func perform<T: Decodable>(path: String) async throws -> T {
+        // No key means every request is a guaranteed 401. Fail before the round trip so the UI can
+        // say "no key" immediately rather than after a timeout.
+        guard !apiKey.isEmpty else { throw AeroAPIError.unauthorized }
+
         guard let url = URL(string: path, relativeTo: Self.baseURL) else {
             throw AeroAPIError.badRequest
         }
@@ -173,4 +204,18 @@ enum AeroAPIError: Error, Equatable {
     case server(status: Int)
     case decoding(String)
     case badRequest
+
+    /// How the scan loop's error banner should describe this. `notFound` and `badRequest` are our
+    /// own mistakes rather than the wearer's, so they surface as a plain server fault.
+    var scanError: SkyWatchError {
+        switch self {
+        case .unauthorized: .unauthorized
+        case .rateLimited: .rateLimited
+        case .transport: .offline
+        case .server(let status): .server(status: status)
+        case .decoding(let message): .decoding(underlying: message)
+        case .notFound: .server(status: 404)
+        case .badRequest: .server(status: 400)
+        }
+    }
 }

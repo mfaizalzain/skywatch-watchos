@@ -168,3 +168,35 @@ extension Double {
     var radians: Double { self * .pi / 180 }
     var degrees: Double { self * 180 / .pi }
 }
+
+/// The lat/long box AeroAPI searches in place of a radius.
+///
+/// A degree of latitude is 60 nm everywhere; a degree of longitude shrinks with the cosine of the
+/// latitude, so only the longitude span needs correcting.
+struct BoundingBox: Sendable, Hashable {
+    let minLatitude: Double
+    let minLongitude: Double
+    let maxLatitude: Double
+    let maxLongitude: Double
+
+    init(centre: Coordinate, radiusNM: Double) {
+        let latitudeSpan = radiusNM / 60
+
+        // Near the poles the cosine collapses and the longitude span explodes; the floor keeps the
+        // box finite rather than wrapping the whole planet.
+        let cosine = max(cos(centre.latitude * .pi / 180), 0.01)
+        let longitudeSpan = min(radiusNM / (60 * cosine), 180)
+
+        minLatitude = max(centre.latitude - latitudeSpan, -90)
+        maxLatitude = min(centre.latitude + latitudeSpan, 90)
+        minLongitude = max(centre.longitude - longitudeSpan, -180)
+        maxLongitude = min(centre.longitude + longitudeSpan, 180)
+    }
+
+    /// The four corners in the order the `-latlong` clause expects.
+    var queryValue: String {
+        [minLatitude, minLongitude, maxLatitude, maxLongitude]
+            .map { String(format: "%.6f", $0) }
+            .joined(separator: " ")
+    }
+}

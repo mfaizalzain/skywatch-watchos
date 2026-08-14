@@ -34,7 +34,7 @@ struct TrailPoint: Sendable, Hashable {
 /// Distance and bearing are computed once per merge and stored, because the list sorts by distance
 /// on every redraw and recomputing a great circle per row per frame is wasted battery.
 struct TrackedTarget: Sendable, Hashable, Identifiable {
-    /// The raw hex, `~` prefix included — identity, not display.
+    /// FlightAware's `fa_flight_id` — identity, not display.
     let id: String
     var aircraft: Aircraft
     var position: ResolvedPosition
@@ -75,10 +75,9 @@ struct TrackedTarget: Sendable, Hashable, Identifiable {
         case .level: break
         }
 
-        if aircraft.isMilitary { parts.append("military") }
-        if aircraft.isAlerting { parts.append("emergency") }
+        if let prefix = aircraft.identPrefixLabel { parts.append(prefix) }
         if position.source == .mlat { parts.append("multilaterated position") }
-        if position.source == .estimated { parts.append("estimated position") }
+        if position.source == .estimated { parts.append("projected position") }
         if position.isStale, let age = position.ageSeconds {
             parts.append("position \(Units.age(seconds: age)) old")
         }
@@ -90,7 +89,7 @@ struct TrackedTarget: Sendable, Hashable, Identifiable {
 /// Folds a fresh response into the targets already on screen.
 ///
 /// Replacing the array wholesale would teleport every blip and throw away the trails, so targets
-/// are matched by hex and updated in place. A target that goes missing is kept — and visibly faded
+/// are matched by flight id and updated in place. A target that goes missing is kept — and visibly faded
 /// — for one cycle, because a single dropped position report is routine at the edge of coverage.
 struct TargetMerger: Sendable {
     static let trailLength = 3
@@ -118,11 +117,11 @@ struct TargetMerger: Sendable {
         var seenIDs = Set<String>()
 
         for aircraft in response {
-            // No hex means no stable identity, so it cannot be tracked across refreshes.
-            guard let hex = aircraft.hex, !hex.isEmpty else { continue }
-            guard let position = aircraft.resolvedPosition else { continue }
+            // No fa_flight_id means no stable identity, so it cannot be tracked across refreshes.
+            guard let flightID = aircraft.faFlightID, !flightID.isEmpty else { continue }
+            guard let position = aircraft.resolvedPosition(now: now) else { continue }
 
-            seenIDs.insert(hex)
+            seenIDs.insert(flightID)
 
             let distance = Geodesy.distanceNM(from: observer, to: position.coordinate)
             let bearing = Geodesy.initialBearing(from: observer, to: position.coordinate)
@@ -133,7 +132,7 @@ struct TargetMerger: Sendable {
                 observer: observer
             )
 
-            if var target = byID[hex] {
+            if var target = byID[flightID] {
                 // Only extend the tail when the aircraft actually moved, so a parked target doesn't
                 // accumulate a smear of identical points.
                 if target.position.coordinate != position.coordinate {
@@ -149,10 +148,10 @@ struct TargetMerger: Sendable {
                 target.closestApproach = approach
                 target.missedCycles = 0
                 target.lastSeen = now
-                byID[hex] = target
+                byID[flightID] = target
             } else {
-                byID[hex] = TrackedTarget(
-                    id: hex,
+                byID[flightID] = TrackedTarget(
+                    id: flightID,
                     aircraft: aircraft,
                     position: position,
                     distanceNM: distance,

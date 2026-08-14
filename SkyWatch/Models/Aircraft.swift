@@ -2,31 +2,15 @@ import Foundation
 
 // MARK: - Altitude
 
-/// `alt_baro` is an integer altitude in feet, or the literal string `"ground"`.
-enum BarometricAltitude: Sendable, Hashable, Decodable {
+/// AeroAPI reports altitude as an integer in *hundreds* of feet. Zero means the aircraft is on or
+/// near the surface, which the scope treats as ground traffic.
+enum BarometricAltitude: Sendable, Hashable {
     case feet(Int)
     case onGround
 
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-
-        if let feet = try? container.decode(Int.self) {
-            self = .feet(feet)
-            return
-        }
-        if let feet = try? container.decode(Double.self) {
-            self = .feet(Int(feet.rounded()))
-            return
-        }
-
-        let text = try container.decode(String.self)
-        guard text.caseInsensitiveCompare("ground") == .orderedSame else {
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Unrecognised alt_baro value \"\(text)\""
-            )
-        }
-        self = .onGround
+    /// - Parameter hundredsOfFeet: the raw `last_position.altitude` value.
+    init(hundredsOfFeet: Int) {
+        self = hundredsOfFeet <= 0 ? .onGround : .feet(hundredsOfFeet * 100)
     }
 
     var feetValue: Int? {
@@ -37,281 +21,229 @@ enum BarometricAltitude: Sendable, Hashable, Decodable {
     var isOnGround: Bool { self == .onGround }
 }
 
-// MARK: - Flags
+// MARK: - Position source
 
-/// `dbFlags` is a bitfield, not an enumeration.
-struct DatabaseFlags: OptionSet, Sendable, Hashable {
-    let rawValue: Int
-
-    init(rawValue: Int) { self.rawValue = rawValue }
-
-    static let military = DatabaseFlags(rawValue: 1)
-    static let interesting = DatabaseFlags(rawValue: 2)
-    /// Privacy ICAO Address — the hex is rotated and does not identify the airframe.
-    static let pia = DatabaseFlags(rawValue: 4)
-    /// Limiting Aircraft Data Displayed — the operator asked to be filtered from public feeds.
-    static let ladd = DatabaseFlags(rawValue: 8)
-}
-
-// MARK: - Status
-
-enum Emergency: String, Sendable, Hashable, CaseIterable {
-    case none
-    case general
-    case lifeguard
-    case minfuel
-    case nordo
-    case unlawful
-    case downed
-    case reserved
-
-    var isActive: Bool { self != .none }
-
-    var label: String {
-        switch self {
-        case .none: "None"
-        case .general: "General emergency"
-        case .lifeguard: "Lifeguard"
-        case .minfuel: "Minimum fuel"
-        case .nordo: "No radio"
-        case .unlawful: "Unlawful interference"
-        case .downed: "Downed aircraft"
-        case .reserved: "Reserved"
-        }
-    }
-}
-
-/// How the position we are about to draw was obtained.
+/// How the position we are about to draw was obtained. Derived from AeroAPI's `update_type`.
 enum PositionSource: Sendable, Hashable {
-    /// A real position report — ADS-B, TIS-B or ADS-C.
+    /// A real position report — ADS-B, radar, datalink, oceanic or space-based.
     case reported
     /// Multilateration. Real, but with accuracy that varies with receiver geometry.
     case mlat
-    /// Receiver-estimated (`rr_lat`/`rr_lon`). Not a fix, and must never be presented as one.
+    /// Projected: FlightAware extrapolated this from an earlier fix. Not a fix, and must never be
+    /// presented as one.
     case estimated
 
+    /// `P` is projected, `M` is multilateration; everything else is a real report.
+    init(updateType: String?) {
+        switch updateType?.uppercased() {
+        case "P": self = .estimated
+        case "M": self = .mlat
+        default: self = .reported
+        }
+    }
+
     var isPrecise: Bool { self == .reported }
+
+    /// The label the detail screen shows for the underlying feed.
+    static func label(updateType: String?) -> String {
+        switch updateType?.uppercased() {
+        case "A": "ADS-B"
+        case "M": "MLAT"
+        case "Z": "Radar"
+        case "D": "Datalink"
+        case "O": "Oceanic"
+        case "S": "Space-based"
+        case "X": "Surface"
+        case "P": "Projected"
+        default: "Unknown"
+        }
+    }
 }
 
 /// A position the UI can actually draw, together with everything it needs to qualify it.
 struct ResolvedPosition: Sendable, Hashable {
     let coordinate: Coordinate
     let source: PositionSource
-    /// Seconds since the position was measured, when the feed tells us.
+    /// Seconds since the position was measured.
     let ageSeconds: TimeInterval?
 
-    /// §2 rule 5: a target is fresh only while its position is under a minute old.
+    /// A target is fresh only while its position is under a minute old.
     var isStale: Bool { (ageSeconds ?? 0) >= 60 }
 
-    /// Estimated positions are always uncertain; MLAT and stale fixes are worth a caution badge.
+    /// Projected positions are always uncertain; MLAT and stale fixes are worth a caution badge.
     var needsCaution: Bool { source != .reported || isStale }
+}
+
+// MARK: - Airport
+
+/// The parts of AeroAPI's airport reference the watch has room to show.
+struct AirportRef: Sendable, Hashable, Decodable {
+    let code: String?
+    let codeICAO: String?
+    let codeIATA: String?
+    let name: String?
+    let city: String?
+
+    enum CodingKeys: String, CodingKey {
+        case code, name, city
+        case codeICAO = "code_icao"
+        case codeIATA = "code_iata"
+    }
+
+    /// Shortest unambiguous thing to print on a 45 mm screen.
+    var displayCode: String? {
+        codeIATA ?? codeICAO ?? code
+    }
+}
+
+// MARK: - Position
+
+/// `last_position` — the only positional data AeroAPI's flight search returns.
+struct FlightPosition: Sendable, Hashable, Decodable {
+    /// Hundreds of feet.
+    let altitude: Int?
+    /// `C` climbing, `D` descending, `-` level.
+    let altitudeChange: String?
+    /// Knots.
+    let groundspeed: Int?
+    /// Degrees, 0–360.
+    let heading: Int?
+    let latitude: Double?
+    let longitude: Double?
+    let timestamp: Date?
+    /// P=projected, O=oceanic, Z=radar, A=ADS-B, M=multilateration, D=datalink, X=surface,
+    /// S=space-based.
+    let updateType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case altitude, groundspeed, heading, latitude, longitude, timestamp
+        case altitudeChange = "altitude_change"
+        case updateType = "update_type"
+    }
 }
 
 // MARK: - Aircraft
 
-/// One aircraft from the `ac` array.
+/// One airborne flight from AeroAPI's `/flights/search` response.
 ///
-/// Every field is optional: the feed omits keys rather than sending nulls, and which keys arrive
-/// depends on the airframe, the transponder version, and which receiver heard it.
+/// Every field is optional: which keys arrive depends on the flight, the data source, and how much
+/// FlightAware knows about the airframe.
 struct Aircraft: Sendable, Hashable, Decodable, Identifiable {
     // Identity
-    let hex: String?
-    let flight: String?
-    let registration: String?
-    let typeCode: String?
-    let category: String?
-    let dbFlagsRaw: Int?
+    /// FlightAware's unique per-flight identifier. The app's stable identity, replacing the ICAO
+    /// hex that the ADS-B feed used to supply.
+    let faFlightID: String?
+    let ident: String?
+    let identICAO: String?
+    let identIATA: String?
+    /// One or two characters: G/GG medevac, L lifeguard, A air taxi, H heavy, M medium.
+    let identPrefix: String?
+    /// ICAO type code where known, IATA otherwise.
+    let aircraftType: String?
+
+    // Route — free with the scan on this feed, where the ADS-B feed needed a separate lookup.
+    let origin: AirportRef?
+    let destination: AirportRef?
 
     // Position and motion
-    let lat: Double?
-    let lon: Double?
-    let altBaro: BarometricAltitude?
-    let altGeom: Double?
-    let groundSpeed: Double?
-    let indicatedAirspeed: Double?
-    let trueAirspeed: Double?
-    let mach: Double?
-    let track: Double?
-    let baroRate: Double?
-    let geomRate: Double?
-    let trueHeading: Double?
-    let magHeading: Double?
-    let roll: Double?
-
-    // Status
-    let squawk: String?
-    let emergencyRaw: String?
-    let alert: Int?
-    let spi: Int?
-    let navModes: [String]?
-    let navAltitudeMCP: Double?
-    let navQNH: Double?
-
-    // Freshness and source
-    let seen: Double?
-    let seenPos: Double?
-    let rssi: Double?
-    let sourceType: String?
-    let lastPosition: LastPosition?
-    let receiverLat: Double?
-    let receiverLon: Double?
-
-    // Derived extras
-    let windDirection: Double?
-    let windSpeed: Double?
-    let outsideAirTemperature: Double?
-    let totalAirTemperature: Double?
-
-    // Quality
-    let nic: Int?
-    let rc: Int?
-    let nacP: Int?
-    let nacV: Int?
-    let sil: Int?
-    let silType: String?
-    let gva: Int?
-    let sda: Int?
-    let version: Int?
+    let lastPosition: FlightPosition?
 
     enum CodingKeys: String, CodingKey {
-        case hex, flight, category, lat, lon, mach, track, roll, squawk, alert, spi, seen, rssi
-        case nic, rc, sil, gva, sda, version
-        case registration = "r"
-        case typeCode = "t"
-        case dbFlagsRaw = "dbFlags"
-        case altBaro = "alt_baro"
-        case altGeom = "alt_geom"
-        case groundSpeed = "gs"
-        case indicatedAirspeed = "ias"
-        case trueAirspeed = "tas"
-        case baroRate = "baro_rate"
-        case geomRate = "geom_rate"
-        case trueHeading = "true_heading"
-        case magHeading = "mag_heading"
-        case emergencyRaw = "emergency"
-        case navModes = "nav_modes"
-        case navAltitudeMCP = "nav_altitude_mcp"
-        case navQNH = "nav_qnh"
-        case seenPos = "seen_pos"
-        case sourceType = "type"
-        case lastPosition
-        case receiverLat = "rr_lat"
-        case receiverLon = "rr_lon"
-        case windDirection = "wd"
-        case windSpeed = "ws"
-        case outsideAirTemperature = "oat"
-        case totalAirTemperature = "tat"
-        case nacP = "nac_p"
-        case nacV = "nac_v"
-        case silType = "sil_type"
+        case ident, origin, destination
+        case faFlightID = "fa_flight_id"
+        case identICAO = "ident_icao"
+        case identIATA = "ident_iata"
+        case identPrefix = "ident_prefix"
+        case aircraftType = "aircraft_type"
+        case lastPosition = "last_position"
     }
 
     // MARK: Identity helpers
 
-    /// Stable identity. The `~` prefix is part of the address and is kept here; it is stripped only
-    /// for display.
     /// Deliberately stable rather than unique: a computed UUID would change on every access and
-    /// break SwiftUI's diffing. Targets without a hex are dropped during the merge anyway.
-    var id: String { hex ?? callsign ?? registration ?? "unidentified" }
+    /// break SwiftUI's diffing. Targets without an `fa_flight_id` are dropped during the merge.
+    var id: String { faFlightID ?? callsign ?? "unidentified" }
 
-    /// A leading `~` marks a non-ICAO address (TIS-B, ADS-R). Not something to show the user.
-    var displayHex: String? {
-        guard let hex else { return nil }
-        return hex.hasPrefix("~") ? String(hex.dropFirst()) : hex
-    }
-
-    var isNonICAOAddress: Bool { hex?.hasPrefix("~") ?? false }
-
-    /// `flight` is space-padded to eight characters on the wire.
     var callsign: String? {
-        guard let trimmed = flight?.trimmed, !trimmed.isEmpty else { return nil }
+        guard let trimmed = ident?.trimmed, !trimmed.isEmpty else { return nil }
         return trimmed
     }
 
-    /// What to put on a row when there is no callsign — registration, then hex, then nothing useful.
     var displayName: String {
-        callsign ?? registration ?? displayHex?.uppercased() ?? "Unknown"
+        callsign ?? identICAO ?? identIATA ?? "Unknown"
     }
 
-    var flags: DatabaseFlags { DatabaseFlags(rawValue: dbFlagsRaw ?? 0) }
-    var isMilitary: Bool { flags.contains(.military) }
+    var typeCode: String? { aircraftType }
 
-    var emergency: Emergency {
-        guard let emergencyRaw, let value = Emergency(rawValue: emergencyRaw.lowercased()) else {
-            return .none
+    /// "WMKK → YSSY", when both ends are known.
+    var routeSummary: String? {
+        guard let from = origin?.displayCode, let to = destination?.displayCode else { return nil }
+        return "\(from) → \(to)"
+    }
+
+    /// What the `ident_prefix` code means, spelled out.
+    var identPrefixLabel: String? {
+        switch identPrefix?.uppercased() {
+        case "G", "GG": "Medevac"
+        case "L": "Lifeguard"
+        case "A": "Air taxi"
+        case "H": "Heavy"
+        case "M": "Medium"
+        default: nil
         }
-        return value
     }
 
-    /// 7500 hijack, 7600 radio failure, 7700 general emergency.
-    var hasEmergencySquawk: Bool {
-        guard let squawk else { return false }
-        return ["7500", "7600", "7700"].contains(squawk)
+    // MARK: Motion
+
+    var altBaro: BarometricAltitude? {
+        guard let altitude = lastPosition?.altitude else { return nil }
+        return BarometricAltitude(hundredsOfFeet: altitude)
     }
 
-    var isAlerting: Bool { emergency.isActive || hasEmergencySquawk }
+    var groundSpeed: Double? {
+        lastPosition?.groundspeed.map(Double.init)
+    }
 
-    var navModeList: [String] { navModes ?? [] }
+    /// This feed reports a single heading rather than separate track and heading.
+    var track: Double? {
+        lastPosition?.heading.map(Double.init)
+    }
 
     var verticalTrend: VerticalTrend {
-        Geodesy.verticalTrend(baroRate: baroRate ?? geomRate)
+        switch lastPosition?.altitudeChange?.uppercased() {
+        case "C": .climbing
+        case "D": .descending
+        default: .level
+        }
+    }
+
+    var sourceLabel: String {
+        PositionSource.label(updateType: lastPosition?.updateType)
     }
 
     // MARK: Position
 
-    /// §2 rules 1–4, resolved once so that no view has to re-derive them.
+    /// The position the scope draws, or `nil` when the flight has no usable fix.
     ///
-    /// Returns `nil` for `mode_s` targets and anything else we heard but cannot place — those are
-    /// excluded from the radar and belong under "Heard, no position".
-    var resolvedPosition: ResolvedPosition? {
-        let source: PositionSource = (sourceType == "mlat") ? .mlat : .reported
+    /// - Parameter now: reference time for the position's age. Injected so merges and tests are
+    ///   deterministic rather than reading the clock per call.
+    func resolvedPosition(now: Date = Date()) -> ResolvedPosition? {
+        guard let lastPosition,
+              let latitude = lastPosition.latitude,
+              let longitude = lastPosition.longitude else { return nil }
 
-        if let lat, let lon {
-            let coordinate = Coordinate(latitude: lat, longitude: lon)
-            if coordinate.isValid {
-                return ResolvedPosition(coordinate: coordinate, source: source, ageSeconds: seenPos)
-            }
-        }
+        let coordinate = Coordinate(latitude: latitude, longitude: longitude)
+        guard coordinate.isValid else { return nil }
 
-        // Rule 1: the top-level position aged out, but the feed kept the last one it had.
-        if let lastPosition, let lat = lastPosition.lat, let lon = lastPosition.lon {
-            let coordinate = Coordinate(latitude: lat, longitude: lon)
-            if coordinate.isValid {
-                return ResolvedPosition(
-                    coordinate: coordinate,
-                    source: source,
-                    // Anything arriving via lastPosition is by definition over a minute old.
-                    ageSeconds: lastPosition.seenPos ?? 60
-                )
-            }
-        }
+        // AeroAPI stamps each position rather than reporting an age, so age is derived. A future
+        // timestamp (clock skew) reads as zero rather than as a negative age.
+        let age = lastPosition.timestamp.map { max(0, now.timeIntervalSince($0)) }
 
-        // Rule 2: no fix at all — only the rough position of the receiver that heard it.
-        if let receiverLat, let receiverLon {
-            let coordinate = Coordinate(latitude: receiverLat, longitude: receiverLon)
-            if coordinate.isValid {
-                return ResolvedPosition(coordinate: coordinate, source: .estimated, ageSeconds: seen)
-            }
-        }
-
-        return nil
-    }
-
-    /// Rule 4: heard on Mode S with no position information whatsoever.
-    var isPositionless: Bool { resolvedPosition == nil }
-}
-
-/// Present when the top-level `lat`/`lon` are more than 60 s old.
-struct LastPosition: Sendable, Hashable, Decodable {
-    let lat: Double?
-    let lon: Double?
-    let nic: Int?
-    let rc: Int?
-    let seenPos: Double?
-
-    enum CodingKeys: String, CodingKey {
-        case lat, lon, nic, rc
-        case seenPos = "seen_pos"
+        return ResolvedPosition(
+            coordinate: coordinate,
+            source: PositionSource(updateType: lastPosition.updateType),
+            ageSeconds: age
+        )
     }
 }
 

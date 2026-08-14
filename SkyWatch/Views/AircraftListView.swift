@@ -19,13 +19,6 @@ struct AircraftListView: View {
 
     var body: some View {
         List {
-            if let emergency = store.visibleTargets.first(where: { $0.aircraft.isAlerting }) {
-                NavigationLink(value: emergency.id) {
-                    EmergencyBanner(target: emergency, isLuminanceReduced: isLuminanceReduced)
-                }
-                .listRowBackground(Color.clear)
-            }
-
             if let failure {
                 FailureStateView(
                     state: failure,
@@ -73,15 +66,6 @@ struct AircraftListView: View {
                         .tint(Palette.dataCyan)
                     }
                 }
-            }
-
-            // Mode S targets are real aircraft we genuinely heard — they just can't be placed, so
-            // they are counted rather than drawn.
-            if store.positionlessCount > 0 {
-                Text("\(store.positionlessCount) heard, no position")
-                    .font(Typography.smallLabel)
-                    .foregroundStyle(Palette.dataCyan.opacity(0.7))
-                    .listRowBackground(Color.clear)
             }
 
             NavigationLink(value: Route.settings) {

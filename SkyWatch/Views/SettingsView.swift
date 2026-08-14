@@ -30,8 +30,7 @@ struct SettingsView: View {
             Section {
                 Toggle("Heading up", isOn: $settings.isHeadingUp)
                 Toggle("Hide ground traffic", isOn: $settings.hidesGroundTraffic)
-                Toggle("Military only", isOn: $settings.showsMilitaryOnly)
-                Toggle("Include MLAT & estimated", isOn: $settings.includesUncertainTargets)
+                Toggle("Include MLAT & projected", isOn: $settings.includesUncertainTargets)
             } header: {
                 sectionHeader("Scope")
             }
@@ -82,9 +81,6 @@ struct SettingsView: View {
         }
         .onChange(of: settings.radius) { _, _ in
             store.refreshAfterSettling()
-        }
-        .onChange(of: settings.showsMilitaryOnly) { _, _ in
-            Task { await store.refresh() }
         }
     }
 

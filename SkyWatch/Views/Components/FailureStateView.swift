@@ -3,7 +3,7 @@ import SwiftUI
 /// Everything the app can say when it has nothing to show, in one place.
 ///
 /// Each case states what happened and what to do about it. None of them apologise, and none of them
-/// are vague — "airplanes.live isn't responding" is actionable; "something went wrong" is not.
+/// are vague — "FlightAware isn't responding" is actionable; "something went wrong" is not.
 enum FailureState: Equatable {
     case noAircraft(radius: ScanRadius)
     case locationDenied
@@ -13,13 +13,16 @@ enum FailureState: Equatable {
     case decoding
     case awaitingLocation
     case locationUnavailable
+    /// No AeroAPI key in this build, or the key was rejected.
+    case unauthorized
 
     init?(error: SkyWatchError?, dataAge: TimeInterval?) {
         switch error {
         case .none: return nil
         case .offline: self = .offline(dataAge: dataAge)
         case .rateLimited: self = .rateLimited
-        case .server, .apiMessage: self = .server
+        case .server: self = .server
+        case .unauthorized: self = .unauthorized
         case .decoding: self = .decoding
         case .locationDenied: self = .locationDenied
         case .locationUnavailable: self = .locationUnavailable
@@ -33,6 +36,7 @@ enum FailureState: Equatable {
         case .offline: "wifi.slash"
         case .rateLimited: "tortoise"
         case .server, .decoding: "antenna.radiowaves.left.and.right.slash"
+        case .unauthorized: "key.slash"
         }
     }
 
@@ -55,9 +59,11 @@ enum FailureState: Equatable {
         case .rateLimited:
             "Slowing down to stay within the API limit."
         case .server:
-            "airplanes.live isn't responding."
+            "FlightAware isn't responding."
         case .decoding:
-            "airplanes.live sent something SkyWatch couldn't read."
+            "FlightAware sent something SkyWatch couldn't read."
+        case .unauthorized:
+            "No valid AeroAPI key. Add yours and rebuild."
         }
     }
 
@@ -66,7 +72,7 @@ enum FailureState: Equatable {
         switch self {
         case .noAircraft, .awaitingLocation: Palette.dataCyan
         case .rateLimited, .offline, .locationUnavailable: Palette.cautionAmber
-        case .locationDenied, .server, .decoding: Palette.warningRed
+        case .locationDenied, .server, .decoding, .unauthorized: Palette.warningRed
         }
     }
 
@@ -87,7 +93,7 @@ enum FailureState: Equatable {
             .openSettings
         case .offline, .server, .decoding, .locationUnavailable:
             .retry
-        case .rateLimited, .awaitingLocation:
+        case .rateLimited, .awaitingLocation, .unauthorized:
             .noAction
         }
     }

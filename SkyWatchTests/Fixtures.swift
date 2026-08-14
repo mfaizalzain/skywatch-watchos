@@ -2,138 +2,177 @@ import Foundation
 
 /// Golden responses, held as string literals rather than resource files so the test bundle needs no
 /// resource copy phase and the fixtures stay readable next to the assertions that use them.
+///
+/// Shaped after AeroAPI's `/flights/search` payload.
 enum Fixtures {
+    /// Matches the decoder the client uses: AeroAPI stamps positions in ISO 8601.
+    static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+
     static func decodeResponse(_ json: String) throws -> AircraftResponse {
-        try JSONDecoder().decode(AircraftResponse.self, from: Data(json.utf8))
+        try decoder.decode(AircraftResponse.self, from: Data(json.utf8))
     }
 
     static func decodeAircraft(_ json: String) throws -> Aircraft {
-        try JSONDecoder().decode(Aircraft.self, from: Data(json.utf8))
+        try decoder.decode(Aircraft.self, from: Data(json.utf8))
     }
 
-    /// A complete, well-formed response with one airborne target.
+    /// A complete, well-formed response with one airborne flight.
     static let fullResponse = """
     {
-      "ac": [
+      "flights": [
         {
-          "hex": "a1b2c3",
-          "type": "adsb_icao",
-          "flight": "UAL328  ",
-          "r": "N77258",
-          "t": "B739",
-          "dbFlags": 0,
-          "alt_baro": 12000,
-          "alt_geom": 12350,
-          "gs": 312.4,
-          "ias": 280,
-          "tas": 330,
-          "mach": 0.52,
-          "track": 210.3,
-          "baro_rate": -1216,
-          "geom_rate": -1184,
-          "true_heading": 208.1,
-          "mag_heading": 194.8,
-          "roll": -1.4,
-          "squawk": "3651",
-          "emergency": "none",
-          "category": "A3",
-          "nav_qnh": 1013.6,
-          "nav_altitude_mcp": 10000,
-          "nav_modes": ["autopilot", "vnav", "lnav"],
-          "lat": 37.402100,
-          "lon": -122.055300,
-          "nic": 8,
-          "rc": 186,
-          "seen_pos": 0.9,
-          "version": 2,
-          "nac_p": 9,
-          "nac_v": 2,
-          "sil": 3,
-          "sil_type": "perhour",
-          "gva": 2,
-          "sda": 2,
-          "alert": 0,
-          "spi": 0,
-          "wd": 270,
-          "ws": 42,
-          "oat": -18,
-          "tat": -4,
-          "messages": 41283,
-          "seen": 0.4,
-          "rssi": -14.2
+          "ident": "UAL328",
+          "ident_icao": "UAL328",
+          "ident_iata": "UA328",
+          "ident_prefix": null,
+          "fa_flight_id": "UAL328-1675633671-airline-0123",
+          "aircraft_type": "B739",
+          "origin": {
+            "code": "KSFO", "code_icao": "KSFO", "code_iata": "SFO",
+            "name": "San Francisco Intl", "city": "San Francisco"
+          },
+          "destination": {
+            "code": "KDEN", "code_icao": "KDEN", "code_iata": "DEN",
+            "name": "Denver Intl", "city": "Denver"
+          },
+          "last_position": {
+            "fa_flight_id": "UAL328-1675633671-airline-0123",
+            "altitude": 120,
+            "altitude_change": "D",
+            "groundspeed": 312,
+            "heading": 210,
+            "latitude": 37.402100,
+            "longitude": -122.055300,
+            "timestamp": "2023-02-05T21:47:51Z",
+            "update_type": "A"
+          }
         }
       ],
-      "msg": "No error",
-      "now": 1675633671226,
-      "total": 1,
-      "ctime": 1675633671226,
-      "ptime": 3
+      "links": null,
+      "num_pages": 1
     }
     """
 
-    /// `alt_baro` as the string "ground".
+    /// The position timestamp used by `fullResponse`, for age assertions.
+    static let fullResponseTimestamp = ISO8601DateFormatter().date(from: "2023-02-05T21:47:51Z")!
+
+    /// Altitude zero — on or near the surface.
     static let groundResponse = """
     {
-      "ac": [
-        {"hex": "d00d00", "flight": "ASA119  ", "alt_baro": "ground", "gs": 12,
-         "lat": 37.3626, "lon": -121.9290, "seen_pos": 0.5, "type": "adsb_icao"}
+      "flights": [
+        {
+          "ident": "ASA119",
+          "fa_flight_id": "ASA119-1675633671-airline-0001",
+          "last_position": {
+            "altitude": 0, "altitude_change": "-", "groundspeed": 12, "heading": 150,
+            "latitude": 37.3626, "longitude": -121.9290,
+            "timestamp": "2023-02-05T21:47:51Z", "update_type": "X"
+          }
+        }
       ],
-      "msg": "No error", "now": 1675633671226, "total": 1
+      "num_pages": 1
     }
     """
 
-    /// The API reporting a problem in `msg`.
-    static let errorMessageResponse = """
-    {"ac": [], "msg": "Rate limit exceeded", "now": 1675633671226, "total": 0}
+    /// An empty sky, which is a normal response rather than an error.
+    static let emptyResponse = """
+    {"flights": [], "links": null, "num_pages": 1}
     """
 
-    /// No top-level position; only `lastPosition`.
-    static let lastPositionResponse = """
+    /// A multilaterated position — real, but lower confidence.
+    static let mlatResponse = """
     {
-      "ac": [
-        {"hex": "abc123", "flight": "SKW5541 ", "alt_baro": 8000, "seen": 74.2, "type": "adsb_icao",
-         "lastPosition": {"lat": 37.1500, "lon": -121.8000, "nic": 8, "rc": 186, "seen_pos": 74.2}}
+      "flights": [
+        {
+          "ident": "N512TS",
+          "fa_flight_id": "N512TS-1675633671-adhoc-0002",
+          "aircraft_type": "C172",
+          "last_position": {
+            "altitude": 31, "altitude_change": "-", "groundspeed": 98, "heading": 310,
+            "latitude": 37.26, "longitude": -122.14,
+            "timestamp": "2023-02-05T21:47:51Z", "update_type": "M"
+          }
+        }
       ],
-      "msg": "No error", "now": 1675633671226, "total": 1
+      "num_pages": 1
     }
     """
 
-    /// Heard on Mode S with only a receiver-estimated position.
-    static let receiverEstimatedResponse = """
+    /// A projected position — extrapolated, never to be presented as a fix.
+    static let projectedResponse = """
     {
-      "ac": [
-        {"hex": "beef01", "t": "GLF6", "type": "mode_s", "seen": 41.0,
-         "rr_lat": 37.44, "rr_lon": -122.15}
+      "flights": [
+        {
+          "ident": "N600GX",
+          "fa_flight_id": "N600GX-1675633671-adhoc-0003",
+          "aircraft_type": "GLF6",
+          "last_position": {
+            "altitude": 410, "altitude_change": "-", "groundspeed": 480, "heading": 20,
+            "latitude": 37.44, "longitude": -122.15,
+            "timestamp": "2023-02-05T21:47:51Z", "update_type": "P"
+          }
+        }
       ],
-      "msg": "No error", "now": 1675633671226, "total": 1
+      "num_pages": 1
     }
     """
 
-    /// A non-ICAO address, prefixed with `~`.
-    static let tildeHexResponse = """
+    /// A flight with no `last_position` at all — cannot be placed on the scope.
+    static let positionlessResponse = """
     {
-      "ac": [
-        {"hex": "~abc999", "flight": "N512TS  ", "alt_baro": 3100, "lat": 37.26, "lon": -122.14,
-         "seen_pos": 2.0, "type": "tisb_icao"}
+      "flights": [
+        {"ident": "SWA99", "fa_flight_id": "SWA99-1675633671-airline-0004", "last_position": null}
       ],
-      "msg": "No error", "now": 1675633671226, "total": 1
+      "num_pages": 1
     }
     """
 
-    /// One malformed member (`alt_baro` is a nonsense string) between two valid ones.
+    /// A lifeguard flight, via `ident_prefix`.
+    static let lifeguardResponse = """
+    {
+      "flights": [
+        {
+          "ident": "N911MD",
+          "ident_prefix": "L",
+          "fa_flight_id": "N911MD-1675633671-adhoc-0005",
+          "last_position": {
+            "altitude": 42, "altitude_change": "C", "groundspeed": 210, "heading": 95,
+            "latitude": 37.38, "longitude": -122.05,
+            "timestamp": "2023-02-05T21:47:51Z", "update_type": "A"
+          }
+        }
+      ],
+      "num_pages": 1
+    }
+    """
+
+    /// One malformed member (`altitude` is a string) between two valid ones.
     static let malformedMemberResponse = """
     {
-      "ac": [
-        {"hex": "aaa111", "flight": "AAL1     ", "alt_baro": 30000, "lat": 37.4, "lon": -122.0, "seen_pos": 1.0},
-        {"hex": "bbb222", "flight": "BAW2    ", "alt_baro": "somewhere", "lat": 37.5, "lon": -122.1},
-        {"hex": "ccc333", "flight": "DAL3    ", "alt_baro": 27000, "lat": 37.6, "lon": -122.2, "seen_pos": 1.0}
+      "flights": [
+        {"ident": "AAL1", "fa_flight_id": "aaa111",
+         "last_position": {"altitude": 300, "groundspeed": 400, "heading": 90,
+          "latitude": 37.4, "longitude": -122.0, "timestamp": "2023-02-05T21:47:51Z", "update_type": "A"}},
+        {"ident": "BAW2", "fa_flight_id": "bbb222",
+         "last_position": {"altitude": "somewhere", "latitude": 37.5, "longitude": -122.1}},
+        {"ident": "DAL3", "fa_flight_id": "ccc333",
+         "last_position": {"altitude": 270, "groundspeed": 420, "heading": 100,
+          "latitude": 37.6, "longitude": -122.2, "timestamp": "2023-02-05T21:47:51Z", "update_type": "A"}}
       ],
-      "msg": "No error", "now": 1675633671226, "total": 3
+      "num_pages": 1
     }
     """
 
-    /// `now` in seconds rather than milliseconds — the documented form.
-    static let secondsTimestampResponse = """
-    {"ac": [], "msg": "No error", "now": 1675633671, "total": 0}
+    /// A paged result set, so the scan can log that it truncated.
+    static let pagedResponse = """
+    {
+      "flights": [],
+      "links": {"next": "/flights/search?query=x&cursor=abc123"},
+      "num_pages": 2
+    }
     """
 }

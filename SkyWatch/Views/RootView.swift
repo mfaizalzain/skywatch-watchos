@@ -50,8 +50,8 @@ struct RootView: View {
             }
             .tabViewStyle(.verticalPage)
             .containerBackground(Palette.scopeBase, for: .navigation)
-            .navigationDestination(for: String.self) { hex in
-                AircraftDetailView(hex: hex)
+            .navigationDestination(for: String.self) { id in
+                AircraftDetailView(id: id)
             }
             .navigationDestination(for: Route.self) { route in
                 switch route {

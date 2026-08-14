@@ -6,27 +6,22 @@ import SwiftUI
 /// Absent fields do not appear. A screen of "—" placeholders would be twice as long and half as
 /// informative.
 struct AircraftDetailView: View {
-    let hex: String
+    /// FlightAware's `fa_flight_id`.
+    let id: String
 
     @Environment(ScanStore.self) private var store
     @Environment(FlightTrackStore.self) private var flightStore
     @Environment(\.requestTrackTab) private var requestTrackTab
-    @State private var refreshedAircraft: Aircraft?
-    /// Origin → destination from the cached AeroAPI lookup (nil until known,
-    /// or when the build has no key).
-    @State private var route: String?
-    @State private var routeLoaded = false
-
     private var settings: SettingsStore { store.settings }
 
-    /// Prefer the detail-endpoint result, fall back to whatever the last scan had.
     private var target: TrackedTarget? {
-        store.targets.first { $0.id == hex }
+        store.targets.first { $0.id == id }
     }
 
-    private var aircraft: Aircraft? {
-        refreshedAircraft ?? target?.aircraft
-    }
+    private var aircraft: Aircraft? { target?.aircraft }
+
+    /// Origin → destination, which this feed returns with the scan itself.
+    private var route: String? { aircraft?.routeSummary }
 
     var body: some View {
         ScrollView {
@@ -42,7 +37,6 @@ struct AircraftDetailView: View {
                     routeSection
                     position(target, aircraft)
                     motion(aircraft)
-                    status(aircraft)
                     signal(aircraft, target: target)
                 }
                 .padding(.horizontal, 4)
@@ -66,20 +60,6 @@ struct AircraftDetailView: View {
                     ShareLink(item: shareText(for: aircraft))
                 }
             }
-        }
-        .task(id: hex) {
-            await pollDetail()
-        }
-        .task(id: aircraft?.callsign) {
-            // Load the route once per callsign: the cache makes repeat views
-            // free, and the metered AeroAPI query happens at most hourly.
-            guard let callsign = aircraft?.callsign else {
-                route = nil
-                routeLoaded = true
-                return
-            }
-            route = await AeroRouteCache.shared.route(forCallsign: callsign)
-            routeLoaded = true
         }
     }
 
@@ -150,24 +130,11 @@ struct AircraftDetailView: View {
     private func identity(_ aircraft: Aircraft) -> some View {
         DetailSection("Identity") {
             DetailRow("Callsign", aircraft.callsign)
-            DetailRow("Registration", aircraft.registration)
+            DetailRow("ICAO ident", aircraft.identICAO)
+            DetailRow("IATA ident", aircraft.identIATA)
             DetailRow("Type", aircraft.typeCode)
-            DetailRow("Category", aircraft.category)
-            DetailRow("Hex", aircraft.displayHex?.uppercased())
-            if aircraft.isNonICAOAddress {
-                DetailRow("Address", "Non-ICAO", tint: Palette.cautionAmber)
-            }
-            if aircraft.flags.contains(.military) {
-                DetailRow("Operator", "Military", tint: Palette.dataCyan)
-            }
-            if aircraft.flags.contains(.interesting) {
-                DetailRow("Operator", "Interesting", tint: Palette.dataCyan)
-            }
-            if aircraft.flags.contains(.pia) {
-                DetailRow("Privacy", "PIA address", tint: Palette.cautionAmber)
-            }
-            if aircraft.flags.contains(.ladd) {
-                DetailRow("Privacy", "LADD", tint: Palette.cautionAmber)
+            if let prefix = aircraft.identPrefixLabel {
+                DetailRow("Class", prefix, tint: Palette.dataCyan)
             }
         }
     }
@@ -190,18 +157,15 @@ struct AircraftDetailView: View {
         .tint(Palette.dataCyan)
     }
 
-    /// Origin → destination from FlightAware (cached, metered). Only appears
-    /// when the build has an AeroAPI key and the lookup succeeds.
+    /// Origin → destination. Arrives with the scan on this feed, so there is nothing to load.
     @ViewBuilder
     private var routeSection: some View {
-        if routeLoaded {
-            if let route {
-                DetailSection("Route") {
-                    DetailRow("Route", route, tint: Palette.dataCyan)
-                }
+        if let route {
+            DetailSection("Route") {
+                DetailRow("Route", route, tint: Palette.dataCyan)
+                DetailRow("From", aircraft?.origin?.name ?? aircraft?.origin?.city)
+                DetailRow("To", aircraft?.destination?.name ?? aircraft?.destination?.city)
             }
-            // Loaded but no route: no key in the build, unknown flight, or a
-            // flight with no origin/destination — nothing to show.
         }
     }
 
@@ -212,15 +176,13 @@ struct AircraftDetailView: View {
             if let altitude = aircraft.altBaro {
                 DetailRow("Altitude", Units.altitude(altitude, system: settings.unitSystem).combined)
             }
-            if let geometric = aircraft.altGeom {
-                DetailRow("Geometric", Units.altitude(feet: geometric, system: settings.unitSystem).combined)
-            }
-            if let rate = aircraft.baroRate ?? aircraft.geomRate {
-                DetailRow(
-                    "Vertical rate",
-                    Units.verticalRate(feetPerMinute: rate, system: settings.unitSystem).combined,
-                    tint: rate > 64 ? Palette.dataCyan : (rate < -64 ? Palette.cautionAmber : nil)
-                )
+            switch aircraft.verticalTrend {
+            case .climbing:
+                DetailRow("Trend", "Climbing", tint: Palette.dataCyan)
+            case .descending:
+                DetailRow("Trend", "Descending", tint: Palette.cautionAmber)
+            case .level:
+                DetailRow("Trend", "Level")
             }
             if let approach = target.closestApproach, approach.timeToClosestApproach > 0 {
                 DetailRow(
@@ -236,117 +198,18 @@ struct AircraftDetailView: View {
             if let speed = aircraft.groundSpeed {
                 DetailRow("Ground speed", Units.speed(knots: speed, system: settings.unitSystem).combined)
             }
-            if let ias = aircraft.indicatedAirspeed {
-                DetailRow("IAS", Units.speed(knots: ias, system: settings.unitSystem).combined)
-            }
-            if let tas = aircraft.trueAirspeed {
-                DetailRow("TAS", Units.speed(knots: tas, system: settings.unitSystem).combined)
-            }
-            if let mach = aircraft.mach {
-                DetailRow("Mach", String(format: "%.2f", mach))
-            }
-            if let track = aircraft.track {
-                DetailRow("Track", Units.bearing(track).combined)
-            }
-            if let heading = aircraft.trueHeading ?? aircraft.magHeading {
+            if let heading = aircraft.track {
                 DetailRow("Heading", Units.bearing(heading).combined)
-            }
-            if let roll = aircraft.roll {
-                DetailRow("Roll", String(format: "%.0f°", roll))
-            }
-            if !aircraft.navModeList.isEmpty {
-                DetailRow("Nav modes", aircraft.navModeList.joined(separator: " "))
-            }
-            if let selected = aircraft.navAltitudeMCP {
-                DetailRow("Selected alt", Units.altitude(feet: selected, system: settings.unitSystem).combined)
-            }
-        }
-    }
-
-    private func status(_ aircraft: Aircraft) -> some View {
-        DetailSection("Status") {
-            if let squawk = aircraft.squawk {
-                DetailRow("Squawk", squawk, tint: aircraft.hasEmergencySquawk ? Palette.warningRed : nil)
-            }
-            if aircraft.emergency.isActive {
-                DetailRow("Emergency", aircraft.emergency.label, tint: Palette.warningRed)
-            }
-            if aircraft.alert == 1 {
-                DetailRow("Alert", "Active", tint: Palette.warningRed)
-            }
-            if aircraft.spi == 1 {
-                DetailRow("Ident", "Active", tint: Palette.dataCyan)
-            }
-            if let direction = aircraft.windDirection, let speed = aircraft.windSpeed {
-                DetailRow("Wind", "\(Units.bearing(direction).combined) · \(Units.speed(knots: speed, system: settings.unitSystem).combined)")
-            }
-            if let oat = aircraft.outsideAirTemperature {
-                DetailRow("OAT", Units.temperature(celsius: oat).combined)
-            }
-            if let qnh = aircraft.navQNH {
-                DetailRow("QNH", String(format: "%.1f hPa", qnh))
             }
         }
     }
 
     private func signal(_ aircraft: Aircraft, target: TrackedTarget) -> some View {
         DetailSection("Signal") {
-            DetailRow("Source", sourceLabel(aircraft), tint: target.position.source.isPrecise ? nil : Palette.cautionAmber)
-            if let seen = aircraft.seen {
-                DetailRow("Last message", Units.age(seconds: seen))
+            DetailRow("Source", aircraft.sourceLabel, tint: target.position.source.isPrecise ? nil : Palette.cautionAmber)
+            if let age = target.position.ageSeconds {
+                DetailRow("Last position", Units.age(seconds: age), tint: age >= 60 ? Palette.cautionAmber : nil)
             }
-            if let seenPos = aircraft.seenPos {
-                DetailRow("Last position", Units.age(seconds: seenPos), tint: seenPos >= 60 ? Palette.cautionAmber : nil)
-            }
-            if let rssi = aircraft.rssi {
-                DetailRow("RSSI", String(format: "%.1f dBFS", rssi))
-            }
-            if let nic = aircraft.nic {
-                DetailRow("NIC", "\(nic)")
-            }
-            if let rc = aircraft.rc {
-                DetailRow("Radius of containment", "\(rc) m")
-            }
-            if let version = aircraft.version {
-                DetailRow("ADS-B version", "\(version)")
-            }
-        }
-    }
-
-    private func sourceLabel(_ aircraft: Aircraft) -> String {
-        switch aircraft.sourceType ?? "" {
-        case "adsb_icao", "adsb_icao_nt": "ADS-B"
-        case "adsr_icao": "ADS-R"
-        case "tisb_icao", "tisb_trackfile", "tisb_other": "TIS-B"
-        case "mlat": "MLAT"
-        case "adsc": "ADS-C"
-        case "mode_s": "Mode S"
-        case "": "Unknown"
-        case let other: other.uppercased()
-        }
-    }
-
-    // MARK: - Detail refresh
-
-    /// Half the scan cadence, through the same rate limiter as everything else. The scan loop is
-    /// still running behind this screen, so anything faster would be two requests fighting for the
-    /// same 1.2 s slot.
-    private func pollDetail() async {
-        var consecutiveMisses = 0
-        while !Task.isCancelled {
-            if let updated = await store.refreshDetail(hex: hex) {
-                refreshedAircraft = updated
-                consecutiveMisses = 0
-            } else {
-                // The feed no longer knows this aircraft — powered down, or
-                // flown out of coverage. Stop asking for a ghost; the last
-                // values stay on screen. (Errors count too, but a transient
-                // outage clears before six misses at this cadence.)
-                consecutiveMisses += 1
-                if consecutiveMisses >= 6 { return }
-            }
-            let interval = store.settings.refreshInterval.seconds * 2
-            try? await Task.sleep(for: .seconds(interval))
         }
     }
 
@@ -432,16 +295,16 @@ private struct DetailRow: View {
 
 #Preview("Airliner") {
     NavigationStack {
-        AircraftDetailView(hex: PreviewData.airliner.hex ?? "")
+        AircraftDetailView(id: PreviewData.airliner.id)
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
             .environment(FlightTrackStore())
             .environment(\.requestTrackTab) {}
     }
 }
 
-#Preview("Emergency") {
+#Preview("Lifeguard") {
     NavigationStack {
-        AircraftDetailView(hex: PreviewData.emergency.hex ?? "")
+        AircraftDetailView(id: PreviewData.lifeguard.id)
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
             .environment(FlightTrackStore())
             .environment(\.requestTrackTab) {}
@@ -450,7 +313,7 @@ private struct DetailRow: View {
 
 #Preview("Gone") {
     NavigationStack {
-        AircraftDetailView(hex: "nosuchhex")
+        AircraftDetailView(id: "nosuchflight")
             .environment(ScanStore.previewStore(targets: PreviewData.handful))
             .environment(FlightTrackStore())
             .environment(\.requestTrackTab) {}

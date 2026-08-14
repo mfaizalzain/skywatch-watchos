@@ -150,8 +150,8 @@ struct RadarView: View {
                     Text("\(selection.members.count) aircraft")
                         .foregroundStyle(Palette.dataCyan)
                 }
-                .navigationDestination(for: String.self) { hex in
-                    AircraftDetailView(hex: hex)
+                .navigationDestination(for: String.self) { id in
+                    AircraftDetailView(id: id)
                 }
             }
         }
@@ -176,17 +176,9 @@ struct RadarView: View {
         }
     }
 
-    /// Emergency banner above the status row: an alerting aircraft gets a
-    /// red, tappable banner instead of being just another red glyph.
     @ViewBuilder
     private var topOverlay: some View {
         VStack(spacing: 4) {
-            if let emergency = store.visibleTargets.first(where: { $0.aircraft.isAlerting }) {
-                NavigationLink(value: emergency.id) {
-                    EmergencyBanner(target: emergency, isLuminanceReduced: isLuminanceReduced)
-                }
-                .buttonStyle(.plain)
-            }
             statusOverlay
         }
         .padding(.top, 2)
@@ -423,14 +415,13 @@ private func drawOrderPriority(
     3 - clusterSeverity(target, nearestID: nearestID, pinned: pinned)
 }
 
-/// Lowest number wins the cluster colour: emergency, then pinned/nearest,
-/// then uncertain positions, then ordinary white.
+/// Lowest number wins the cluster colour: pinned/nearest, then uncertain
+/// positions, then ordinary white.
 private func clusterSeverity(
     _ target: TrackedTarget,
     nearestID: TrackedTarget.ID?,
     pinned: Set<String>
 ) -> Int {
-    if target.aircraft.isAlerting { return 0 }
     if target.id == nearestID || pinned.contains(target.id) { return 1 }
     if target.position.needsCaution { return 2 }
     return 3
@@ -752,9 +743,11 @@ private struct ScopeCanvas: View {
         // A blip that is genuinely climbing or descending earns the same tiny chevron the list
         // rows carry — but only past a real rate, so a slow 100 fpm drift doesn't add noise.
         // Drawn above-right of the blip so it never fights the glyph's own rotation.
-        let verticalRate = target.aircraft.baroRate ?? target.aircraft.geomRate
-        if !isLuminanceReduced, let verticalRate, abs(verticalRate) >= 500 {
-            let up = verticalRate > 0
+        // This feed reports a climb/descent flag rather than a rate, so any non-level trend earns
+        // the chevron.
+        let trend = target.aircraft.verticalTrend
+        if !isLuminanceReduced, trend != .level {
+            let up = trend == .climbing
             var chevron = Path()
             if up {
                 chevron.move(to: CGPoint(x: -3 * scale, y: 1.5 * scale))

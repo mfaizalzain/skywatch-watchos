@@ -100,12 +100,8 @@ final class SettingsStore {
         didSet { defaults.set(hidesGroundTraffic, forKey: Key.hideGroundTraffic) }
     }
 
-    var showsMilitaryOnly: Bool {
-        didSet { defaults.set(showsMilitaryOnly, forKey: Key.militaryOnly) }
-    }
-
-    /// MLAT and receiver-estimated targets. On by default — in thin coverage they are most of what
-    /// there is to see, and they are clearly badged wherever they appear.
+    /// MLAT and projected targets. On by default — in thin coverage they are most of what there is
+    /// to see, and they are clearly badged wherever they appear.
     var includesUncertainTargets: Bool {
         didSet { defaults.set(includesUncertainTargets, forKey: Key.includeUncertainTargets) }
     }
@@ -142,7 +138,6 @@ final class SettingsStore {
         unitSystem = (store.string(forKey: Key.unitSystem)).flatMap(UnitSystem.init(rawValue:)) ?? .aviation
         isHeadingUp = store.object(forKey: Key.headingUp) as? Bool ?? true
         hidesGroundTraffic = store.object(forKey: Key.hideGroundTraffic) as? Bool ?? true
-        showsMilitaryOnly = store.object(forKey: Key.militaryOnly) as? Bool ?? false
         includesUncertainTargets = store.object(forKey: Key.includeUncertainTargets) as? Bool ?? true
         hapticAlertsEnabled = store.object(forKey: Key.hapticAlerts) as? Bool ?? false
         proximityDistance = (store.object(forKey: Key.proximityDistance) as? Double).flatMap(ProximityDistance.init(rawValue:)) ?? .three
@@ -175,7 +170,6 @@ final class SettingsStore {
         static let unitSystem = "unitSystem"
         static let headingUp = "headingUp"
         static let hideGroundTraffic = "hideGroundTraffic"
-        static let militaryOnly = "militaryOnly"
         static let includeUncertainTargets = "includeUncertainTargets"
         static let hapticAlerts = "hapticAlerts"
         static let proximityDistance = "proximityDistance"

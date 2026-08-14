@@ -29,21 +29,15 @@ struct TargetBadges: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            if target.aircraft.hasEmergencySquawk, let squawk = target.aircraft.squawk {
-                Badge(text: squawk, color: Palette.warningRed, isLuminanceReduced: isLuminanceReduced)
-            } else if target.aircraft.emergency.isActive {
-                Badge(text: "EMG", color: Palette.warningRed, isLuminanceReduced: isLuminanceReduced)
-            }
-
-            if target.aircraft.isMilitary {
-                Badge(text: "MIL", color: Palette.dataCyan, isLuminanceReduced: isLuminanceReduced)
+            if let prefix = target.aircraft.identPrefixLabel {
+                Badge(text: prefix.uppercased(), color: Palette.dataCyan, isLuminanceReduced: isLuminanceReduced)
             }
 
             switch target.position.source {
             case .mlat:
                 Badge(text: "MLAT", color: Palette.cautionAmber, isLuminanceReduced: isLuminanceReduced)
             case .estimated:
-                Badge(text: "EST", color: Palette.cautionAmber, isLuminanceReduced: isLuminanceReduced)
+                Badge(text: "PROJ", color: Palette.cautionAmber, isLuminanceReduced: isLuminanceReduced)
             case .reported:
                 EmptyView()
             }
@@ -96,8 +90,7 @@ struct VerticalTrendChevron: View {
 
 #Preview("Badges") {
     VStack(alignment: .leading, spacing: 6) {
-        TargetBadges(target: PreviewData.emergencyTarget)
-        TargetBadges(target: PreviewData.militaryTarget)
+        TargetBadges(target: PreviewData.lifeguardTarget)
         TargetBadges(target: PreviewData.staleMLATTarget)
         HStack {
             BearingArrow(degrees: 210)

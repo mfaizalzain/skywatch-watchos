@@ -75,7 +75,7 @@ final class FlightTrackStore {
 
     // MARK: Dependencies
 
-    private let client: AirplanesLiveClient
+    private let client: AeroAPIClient
     private let notifier: FlightNotifier
     /// Non-nil only when the build has an AeroAPI key injected.
     private let aeroClient: AeroAPIClient?
@@ -88,7 +88,7 @@ final class FlightTrackStore {
     private var lastAeroPoll: Date?
 
     init(
-        client: AirplanesLiveClient = AirplanesLiveClient(),
+        client: AeroAPIClient = AeroAPIClient(),
         notifier: FlightNotifier = FlightNotifier(),
         aeroClient: AeroAPIClient? = AeroAPIClient.hasConfiguredKey ? AeroAPIClient() : nil
     ) {
@@ -249,11 +249,6 @@ final class FlightTrackStore {
             try Task.checkCancellation()
             guard flightNumber == self.flightNumber, airport == self.airport else { return }
 
-            if let message = response.apiError {
-                error = .apiMessage(message)
-                return
-            }
-
             guard let aircraft = response.aircraft.first else {
                 // Not in the feed: either never airborne, out of coverage, or
                 // powered down after landing. If we were tracking it and it was
@@ -288,8 +283,8 @@ final class FlightTrackStore {
 
         } catch is CancellationError {
             // Task was cancelled — nothing to log, the loop is tearing down.
-        } catch let failure as SkyWatchError {
-            error = failure
+        } catch let failure as AeroAPIError {
+            error = failure.scanError
             logger.warning("Poll failed: \(String(describing: failure), privacy: .public)")
         } catch let other {
             self.error = .decoding(underlying: other.localizedDescription)
@@ -475,11 +470,8 @@ final class FlightTrackStore {
     }
 
     private static func distance(from aircraft: Aircraft, to airport: Airport) -> Double {
-        guard let lat = aircraft.lat, let lon = aircraft.lon else { return .infinity }
-        return Geodesy.distanceNM(
-            from: Coordinate(latitude: lat, longitude: lon),
-            to: airport.coordinate
-        )
+        guard let position = aircraft.resolvedPosition() else { return .infinity }
+        return Geodesy.distanceNM(from: position.coordinate, to: airport.coordinate)
     }
 }
 
